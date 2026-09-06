@@ -98,12 +98,14 @@ export const METRIC_STEPS = [
 // Controller
 export const GRBL = "Grbl";
 export const GRBLHAL = "grblHAL";
+export const FLUIDNC = "FluidNC";
 export const MARLIN = "Marlin";
 export const SMOOTHIE = "Smoothie";
 export const TINYG = "TinyG";
 export const FIRMWARE_TYPES = {
 	GRBL: "Grbl",
 	GRBLHAL: "grblHAL",
+	FLUIDNC: "FluidNC",
 	MARLIN: "Marlin",
 	SMOOTHIE: "Smoothie",
 	TINYG: "TinyG",

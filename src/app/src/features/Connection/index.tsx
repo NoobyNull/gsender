@@ -41,7 +41,7 @@ export interface ConnectionProps {
 	reportedFirmware: FirmwareFlavour;
 }
 
-export type FirmwareFlavour = "Grbl" | "grblHAL" | "";
+export type FirmwareFlavour = "Grbl" | "grblHAL" | "FluidNC" | "";
 
 function Connection(props: ConnectionProps) {
 	const connectionConfig = new WidgetConfig("connection");
