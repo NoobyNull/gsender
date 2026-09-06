@@ -31,9 +31,14 @@ import { SerialPort } from "serialport";
 import socketIO from "socket.io";
 import { VISUALIZER_SECONDARY } from "../../../app/src/constants";
 import { authorizeIPAddress } from "../../access-control";
-import { GrblController, GrblHalController } from "../../controllers";
+import {
+	GrblController,
+	GrblHalController,
+	FluidNCController,
+} from "../../controllers";
 import { GRBL } from "../../controllers/Grbl/constants";
 import { GRBLHAL } from "../../controllers/Grblhal/constants";
+import { FLUIDNC } from "../../controllers/FluidNC/constants";
 import Connection from "../../lib/Connection";
 import delay from "../../lib/delay";
 import EventTrigger from "../../lib/EventTrigger";
@@ -69,7 +74,9 @@ const isValidController = (controller) =>
 	// Standard GRBL
 	caseInsensitiveEquals(GRBL, controller) ||
 	// GrblHal
-	caseInsensitiveEquals(GRBLHAL, controller);
+	caseInsensitiveEquals(GRBLHAL, controller) ||
+	// FluidNC
+	caseInsensitiveEquals(FLUIDNC, controller);
 
 class CNCEngine {
 	controllerClass = {};
@@ -137,6 +144,9 @@ class CNCEngine {
 		}
 		if (!controller || caseInsensitiveEquals(GRBLHAL, controller)) {
 			this.controllerClass[GRBLHAL] = GrblHalController;
+		}
+		if (!controller || caseInsensitiveEquals(FLUIDNC, controller)) {
+			this.controllerClass[FLUIDNC] = FluidNCController;
 		}
 
 		if (Object.keys(this.controllerClass).length === 0) {

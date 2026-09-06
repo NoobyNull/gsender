@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Sienci Labs Inc.
+ * Copyright (C) 2026 gSender FluidNC fork contributors
  *
  * This file is part of gSender.
  *
@@ -14,15 +14,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with gSender.  If not, see <https://www.gnu.org/licenses/>.
- *
- * Contact for information regarding this program and its license
- * can be sent through gSender@sienci.com or mailed to the main office
- * of Sienci Labs Inc. in Waterloo, Ontario, Canada.
- *
  */
 
-import GrblController from "./Grbl/GrblController";
-import GrblHalController from "./Grblhal/GrblHalController";
-import FluidNCController from "./FluidNC/FluidNCController";
-
-export { GrblController, GrblHalController, FluidNCController };
+// FluidNC (ESP32 Grbl-compatible firmware — https://github.com/bdring/FluidNC)
+export const FLUIDNC = "FluidNC";

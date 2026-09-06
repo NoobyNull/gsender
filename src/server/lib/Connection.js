@@ -2,6 +2,7 @@ import { EventEmitter } from "events";
 import { includes, noop } from "lodash";
 import { WRITE_SOURCE_CLIENT } from "../controllers/constants";
 import { GRBL, GRBL_REALTIME_COMMANDS } from "../controllers/Grbl/constants";
+import { FLUIDNC } from "../controllers/FluidNC/constants";
 import {
 	GRBLHAL,
 	GRBLHAL_REALTIME_COMMANDS,
@@ -41,10 +42,17 @@ class Connection extends EventEmitter {
 
 				// Note - Do we need two grblHAL clauses if we're using i insensitive flag? - ie grblHAL|GrblHAL
 				// https://regex101.com/r/oPVkkF/1
-				const grblR = data.match(/.*(grbl|fluidnc).*/i);
+				// Order matters: FluidNC banners also contain "Grbl" (compat
+				// shim), so check for the more specific firmware first.
+				const fluidNCR = data.match(/.*(fluidnc).*/i);
+				const grblR = data.match(/.*(grbl).*/i);
 				const grblHalR = data.match(/.*(grblhal).*/i);
 
-				if (grblHalR) {
+				if (fluidNCR) {
+					this.controllerType = FLUIDNC;
+					this.emit("firmwareFound", FLUIDNC, this.options, this.callback);
+					clearInterval(this.timeout);
+				} else if (grblHalR) {
 					this.controllerType = GRBLHAL;
 					this.emit("firmwareFound", GRBLHAL, this.options, this.callback);
 					clearInterval(this.timeout);
