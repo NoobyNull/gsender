@@ -9,6 +9,9 @@ export const viteServer = async (app) => {
 
 	const devDir = path.resolve(projectRoot, "src/app");
 	const prodDirCandidates = [
+		// When bundled into main.js (packaged app), __dirname is the asar root
+		// and the built UI lives alongside it at <asar>/app.
+		path.resolve(__dirname, "app"),
 		path.resolve(bundleRoot, "app"),
 		path.resolve(projectRoot, "dist/gsender/app"),
 	];
