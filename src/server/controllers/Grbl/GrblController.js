@@ -107,6 +107,12 @@ const noop = _.noop;
 class GrblController {
 	type = GRBL;
 
+	// Error/alarm code tables — subclasses (FluidNC) extend these with
+	// firmware-specific codes.
+	errorTable = GRBL_ERRORS;
+
+	alarmTable = GRBL_ALARMS;
+
 	// CNCEngine
 	engine = null;
 
@@ -842,7 +848,7 @@ class GrblController {
 
 		this.runner.on("error", (res) => {
 			const code = Number(res.message) || undefined;
-			const error = _.find(GRBL_ERRORS, { code: code });
+			const error = _.find(this.errorTable, { code: code });
 
 			log.error(`Error occurred at ${Date.now()}`);
 
@@ -929,7 +935,7 @@ class GrblController {
 
 		this.runner.on("alarm", (res) => {
 			const code = Number(res.message) || undefined;
-			const alarm = _.find(GRBL_ALARMS, { code: code });
+			const alarm = _.find(this.alarmTable, { code: code });
 
 			const { lines, received, name } = this.sender.state;
 			const { outstanding } = this.feeder.state;
@@ -978,7 +984,7 @@ class GrblController {
 		});
 
 		this.runner.on("startupAlarm", (res) => {
-			const alarm = _.find(GRBL_ALARMS, { code: "Homing" });
+			const alarm = _.find(this.alarmTable, { code: "Homing" });
 
 			if (alarm) {
 				// Grbl v1.1

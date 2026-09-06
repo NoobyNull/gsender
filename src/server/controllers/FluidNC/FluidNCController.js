@@ -17,7 +17,13 @@
  */
 
 import GrblController from "../Grbl/GrblController";
-import { FLUIDNC } from "./constants";
+import { GRBL_ERRORS, GRBL_ALARMS } from "../Grbl/constants";
+import {
+	FLUIDNC,
+	FLUIDNC_ERRORS,
+	FLUIDNC_ALARMS,
+	parseFluidNCVersion,
+} from "./constants";
 
 /**
  * FluidNC controller.
@@ -40,6 +46,31 @@ import { FLUIDNC } from "./constants";
 // proves they're needed, not speculatively.
 class FluidNCController extends GrblController {
 	type = FLUIDNC;
+
+	// FluidNC extends Grbl's error codes (39+) and alarm codes (10+);
+	// see FluidNC/src/Error.h and Alarm.h.
+	errorTable = [...GRBL_ERRORS, ...FLUIDNC_ERRORS];
+
+	alarmTable = [...GRBL_ALARMS, ...FLUIDNC_ALARMS];
+
+	constructor(...args) {
+		super(...args);
+
+		// The default FluidNC banner is "Grbl <maj.min> [FluidNC <git_info> ...]"
+		// (FluidNC/src/SettingsDefinitions.cpp: "Grbl \V [FluidNC \B (\X) \H]"),
+		// so the Grbl startup parser reports the compat-shim version ("3.9").
+		// Surface the real firmware version instead. The periodic settings-sync
+		// in GrblController pushes any new runner.settings object to the UI.
+		this.runner.on("startup", (res) => {
+			const version = parseFluidNCVersion(res.raw);
+			if (version) {
+				this.runner.settings = {
+					...this.runner.settings,
+					version,
+				};
+			}
+		});
+	}
 }
 
 export default FluidNCController;
