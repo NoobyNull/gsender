@@ -1,5 +1,6 @@
 {
-  "name": "gSender",
+  "name": "gsender-fluidnc",
+  "productName": "gSender FluidNC",
   "private": true,
   "type": "module",
   "scripts": {
@@ -124,5 +125,5 @@
     "type": "git",
     "url": "https://github.com/Sienci-Labs/gsender"
   },
-  "version": "1.7.0-Edge-1"
+  "version": "1.7.0-FluidNC-beta-1"
 }

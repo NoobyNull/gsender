@@ -75,6 +75,11 @@ const defaultPort = isElectron() ? 0 : 8000;
 
 program
 	.version(pkg.version, "--version", "Output the current program version")
+	// In the packaged Electron app the full process argv reaches this parser,
+	// including Electron/Chromium switches (--no-sandbox,
+	// --ozone-platform-hint, ...). Ignore flags we don't own instead of
+	// exiting with "unknown option".
+	.allowUnknownOption()
 	.usage("[options]")
 	.option(
 		"-p, --port <port>",

@@ -1,6 +1,6 @@
 {
-	"name": "gSender",
-	"version": "1.7.0-Edge-1",
+	"name": "gsender-fluidnc",
+	"version": "1.7.0-FluidNC-beta-1",
 	"description": "Electron sender for GRBL based CNC machines",
 	"author": {
 		"name": "Sienci Labs <hi@sienci.com>",
@@ -116,7 +116,7 @@
 		"test:app": "yarn --cwd src/app test"
 	},
 	"build": {
-		"appId": "org.sienci.gsender-edge",
+		"appId": "family.yax.gsender-fluidnc",
 		"extraMetadata": {
 			"main": "./main.js"
 		},
@@ -128,7 +128,7 @@
 			"**/*.node",
 			"**/*.{dll,so,dylib,exe}"
 		],
-		"productName": "gSender Edge",
+		"productName": "gSender FluidNC",
 		"generateUpdatesFilesForAllChannels": true,
 		"npmRebuild": false,
 		"compression": "normal",
@@ -210,7 +210,8 @@
 			"target": [
 				"AppImage",
 				"deb"
-			]
+			],
+			"executableName": "gsender-fluidnc"
 		},
 		"fileAssociations": [
 			{
@@ -243,7 +244,10 @@
 				"description": "G-Code CNC machining file",
 				"role": "Viewer"
 			}
-		]
+		],
+		"pacman": {
+			"packageName": "gsender-fluidnc"
+		}
 	},
 	"keywords": [
 		"gsender",
