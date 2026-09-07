@@ -300,3 +300,40 @@
 	overflow: auto;
 	flex: 1;
 }
+
+/* Axis sub-tabs */
+.fnc-axis-tabs {
+	display: flex;
+	gap: 4px;
+	margin: 0.75rem 0 0.5rem;
+	border-bottom: 2px solid #dde;
+	padding-bottom: 2px;
+}
+
+.fnc-axis-tab {
+	padding: 0.35rem 0.9rem;
+	border: 1px solid transparent;
+	border-bottom: none;
+	border-radius: 4px 4px 0 0;
+	background: #eef;
+	cursor: pointer;
+	font-weight: 600;
+}
+
+.fnc-axis-tab.active {
+	background: #3a6df0;
+	color: #fff;
+}
+
+.fnc-axis-add {
+	padding: 0.35rem 0.6rem;
+	border: 1px dashed #9ab;
+	border-radius: 4px;
+	background: none;
+	cursor: pointer;
+	color: #567;
+}
+
+.fnc-axis-add:hover {
+	background: #eef;
+}

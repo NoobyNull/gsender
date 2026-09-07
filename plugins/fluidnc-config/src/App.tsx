@@ -180,7 +180,7 @@ const SECTION_GROUPS: { title: string; keys: string[] }[] = [
 	{
 		// uartN / uart_channelN / i2cN are schema patternProperties (any index
 		// is legal); we surface the indexes pendants and displays actually use.
-		title: "Pendant & Display",
+		title: "Pendant, UART & Display",
 		keys: [
 			"oled",
 			"i2c0",
@@ -256,6 +256,115 @@ const pick = (obj: Record<string, unknown>, keys: string[]) => {
 	}
 	return out;
 };
+
+const AXIS_LETTERS = ["x", "y", "z", "a", "b", "c"];
+const AXIS_LEVEL_KEYS = [
+	"shared_stepper_disable_pin",
+	"shared_stepper_reset_pin",
+	"homing_runs",
+];
+
+// Common Form props shared by every section render.
+type FormProps = Omit<
+	React.ComponentProps<typeof Form>,
+	"schema" | "formData" | "onChange"
+>;
+
+// Custom Axes editor: X/Y/Z/A/B/C sub-tabs (point 1) with progressive
+// disclosure — x/y/z (schema minimum) plus any axis already in the config are
+// shown; the rest hide behind "+ add". Axis-level shared pins sit above.
+function AxesEditor({
+	axes,
+	setAxes,
+	formProps,
+}: {
+	axes: Record<string, unknown>;
+	setAxes: (next: Record<string, unknown>) => void;
+	formProps: FormProps;
+}) {
+	const present = AXIS_LETTERS.filter(
+		(a) => a in axes || ["x", "y", "z"].includes(a),
+	);
+	const addable = AXIS_LETTERS.filter((a) => !present.includes(a));
+	const [axis, setAxis] = useState("x");
+	const active = present.includes(axis) ? axis : "x";
+
+	const axisSchema = {
+		...(schema.$defs?.axisLetter as object),
+		$defs: schema.$defs,
+	} as RJSFSchema;
+	const levelSchema = {
+		type: "object",
+		properties: pick(
+			(schema.$defs?.axesSection as { properties: Record<string, unknown> })
+				.properties,
+			AXIS_LEVEL_KEYS,
+		) as RJSFSchema["properties"],
+		$defs: schema.$defs,
+	} as RJSFSchema;
+
+	const levelData = pick(axes, AXIS_LEVEL_KEYS);
+	const axisData = (axes[active] ?? {}) as Record<string, unknown>;
+
+	return (
+		<div>
+			<Form
+				{...formProps}
+				schema={levelSchema}
+				formData={levelData}
+				formContext={{ ...formProps.formContext, pathPrefix: "axes" }}
+				onChange={(e) => {
+					const next = { ...axes };
+					for (const k of AXIS_LEVEL_KEYS) delete next[k];
+					setAxes({ ...next, ...(e.formData ?? {}) });
+				}}
+			>
+				<span />
+			</Form>
+
+			<div className="fnc-axis-tabs">
+				{present.map((a) => (
+					<button
+						key={a}
+						type="button"
+						className={`fnc-axis-tab ${a === active ? "active" : ""}`}
+						onClick={() => setAxis(a)}
+					>
+						{a.toUpperCase()}
+					</button>
+				))}
+				{addable.map((a) => (
+					<button
+						key={a}
+						type="button"
+						className="fnc-axis-add"
+						title={`Add ${a.toUpperCase()} axis`}
+						onClick={() => {
+							setAxes({ ...axes, [a]: {} });
+							setAxis(a);
+						}}
+					>
+						+{a.toUpperCase()}
+					</button>
+				))}
+			</div>
+
+			<Form
+				{...formProps}
+				key={active}
+				schema={axisSchema}
+				formData={axisData}
+				formContext={{
+					...formProps.formContext,
+					pathPrefix: `axes.${active}`,
+				}}
+				onChange={(e) => setAxes({ ...axes, [active]: e.formData ?? {} })}
+			>
+				<span />
+			</Form>
+		</div>
+	);
+}
 
 // ---- Pin usage analysis ----------------------------------------------------
 // The schema validates pin syntax per field; cross-field constraints (a GPIO
@@ -408,6 +517,19 @@ export default function App() {
 		}
 		return map;
 	}, [config]);
+
+	const commonFormProps: FormProps = {
+		validator,
+		widgets: { TextWidget: PinAwareTextWidget },
+		templates: { DescriptionFieldTemplate: HelpTooltip },
+		formContext: { usedPins },
+		idSeparator: "/",
+		experimental_defaultFormStateBehavior: {
+			emptyObjectFields: "skipDefaults",
+		},
+		liveValidate: false,
+		showErrorList: false,
+	};
 
 	const loadYamlText = (text: string, name: string) => {
 		try {
@@ -673,7 +795,7 @@ export default function App() {
 				</nav>
 
 				<main className="fnc-content">
-					{activeGroup.title === "Pendant & Display" && (
+					{activeGroup.title === "Pendant, UART & Display" && (
 						<div className="fnc-presets">
 							{HARDWARE_PRESETS.map((p) => (
 								<button
@@ -692,25 +814,26 @@ export default function App() {
 							</span>
 						</div>
 					)}
-					<Form
-						key={activeGroup.title}
-						schema={sectionSchema}
-						formData={sectionData}
-						validator={validator}
-						widgets={{ TextWidget: PinAwareTextWidget }}
-						templates={{ DescriptionFieldTemplate: HelpTooltip }}
-						formContext={{ usedPins }}
-						idSeparator="/"
-						experimental_defaultFormStateBehavior={{
-							emptyObjectFields: "skipDefaults",
-						}}
-						liveValidate={false}
-						showErrorList={false}
-						onChange={(e) => mergeSection(e.formData)}
-					>
-						{/* no submit button; changes merge live into the config */}
-						<span />
-					</Form>
+					{activeGroup.title === "Axes" ? (
+						<AxesEditor
+							axes={(config.axes ?? {}) as Record<string, unknown>}
+							setAxes={(next) =>
+								setConfig((prev) => ({ ...prev, axes: next }))
+							}
+							formProps={commonFormProps}
+						/>
+					) : (
+						<Form
+							{...commonFormProps}
+							key={activeGroup.title}
+							schema={sectionSchema}
+							formData={sectionData}
+							onChange={(e) => mergeSection(e.formData)}
+						>
+							{/* no submit button; changes merge live into the config */}
+							<span />
+						</Form>
+					)}
 				</main>
 
 				{showYaml && (

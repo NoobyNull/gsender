@@ -6,14 +6,20 @@ import { ESP32_PINS, PIN_BY_NAME, parsePin, formatPin } from "./pins";
 const DefaultText = getDefaultRegistry().widgets.TextWidget;
 
 // rjsf id ("root/axes/x/motor0/step_pin" with idSeparator="/") -> config path
-// in the same format collectPins produces ("axes.x.motor0.step_pin").
-const idToPath = (id: string) =>
-	id
+// in the same format collectPins produces ("axes.x.motor0.step_pin"). A
+// pathPrefix (from formContext) is prepended for forms scoped to a sub-object
+// (e.g. the per-axis editor renders the axis schema at its root, so its ids
+// lack the "axes.x" prefix).
+const idToPath = (id: string, prefix = "") => {
+	const tail = id
 		.replace(/^root\/?/, "")
 		.split("/")
+		.filter(Boolean)
 		.map((s) => (/^\d+$/.test(s) ? `[${s}]` : s))
 		.join(".")
 		.replace(/\.\[/g, "[");
+	return [prefix, tail].filter(Boolean).join(".");
+};
 
 const isPinSchema = (schema: WidgetProps["schema"], id: string) =>
 	(typeof schema.description === "string" &&
@@ -35,7 +41,7 @@ export default function PinAwareTextWidget(props: WidgetProps) {
 	}
 
 	const usedPins: Map<string, string[]> = formContext?.usedPins ?? new Map();
-	const selfPath = idToPath(id);
+	const selfPath = idToPath(id, formContext?.pathPrefix ?? "");
 	const parsed = parsePin(value);
 	const def = PIN_BY_NAME.get(parsed.base);
 
