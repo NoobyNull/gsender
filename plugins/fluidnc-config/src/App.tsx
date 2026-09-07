@@ -7,14 +7,89 @@ import yaml from "js-yaml";
 import schemaJson from "./vendor/fluidnc-config-schema.json";
 import PinAwareTextWidget from "./PinWidget";
 
-// Schema descriptions are long maintainer notes. Render them as a hover "ⓘ"
-// next to the field instead of a wall of text under it.
-function HelpTooltip({ description }: { description?: unknown }) {
-	const text = typeof description === "string" ? description.trim() : "";
-	if (!text) return null;
+// FluidNC wiki page per config section (verified against wiki.fluidnc.com).
+const WIKI = "http://wiki.fluidnc.com/en/config/";
+const IO_WIKI = `${WIKI}config_IO`;
+const VFD_WIKI = `${WIKI}modbus_vfd`;
+const SECTION_WIKI: Record<string, string> = {
+	__top: `${WIKI}top_level_config_items`,
+	__motor: `${WIKI}trinamic_drivers`,
+	__spindle: `${WIKI}config_spindles`,
+	axes: `${WIKI}axes`,
+	kinematics: `${WIKI}kinematics`,
+	control: `${WIKI}control`,
+	coolant: `${WIKI}coolant`,
+	probe: `${WIKI}probe`,
+	user_inputs: `${WIKI}user_inputs`,
+	user_outputs: `${WIKI}user_outputs`,
+	status_outputs: `${WIKI}status_outputs`,
+	sdcard: `${WIKI}sd_card`,
+	macros: `${WIKI}macros`,
+	start: `${WIKI}start_group`,
+	oled: IO_WIKI,
+	i2c0: IO_WIKI,
+	i2c1: IO_WIKI,
+	i2so: IO_WIKI,
+	spi: IO_WIKI,
+	uart1: `${WIKI}uart_sections`,
+	uart2: `${WIKI}uart_sections`,
+	uart_channel1: `${WIKI}uart_sections`,
+	uart_channel2: `${WIKI}uart_sections`,
+	ModbusVFD: VFD_WIKI,
+	Huanyang: VFD_WIKI,
+	H2A: VFD_WIKI,
+	YL620: VFD_WIKI,
+	DeltaMS300: VFD_WIKI,
+	FolinnBD600: VFD_WIKI,
+	H100: VFD_WIKI,
+	MollomG70: VFD_WIKI,
+	NowForever: VFD_WIKI,
+	SiemensV20: VFD_WIKI,
+	DanfossVLT2800: VFD_WIKI,
+};
+const wikiFor = (key?: string) =>
+	(key && SECTION_WIKI[key]) || `${WIKI}overview`;
+
+// Per-field help: an ⓘ button that expands a small panel with what the field
+// does (the schema description), the allowed values if it's an enum, and a
+// "FluidNC wiki ↗" link to the relevant section page (from formContext.wikiUrl).
+function HelpTooltip(props: {
+	description?: unknown;
+	schema?: { enum?: unknown[] };
+	registry?: { formContext?: { wikiUrl?: string } };
+}) {
+	const [open, setOpen] = useState(false);
+	const text =
+		typeof props.description === "string" ? props.description.trim() : "";
+	const values = Array.isArray(props.schema?.enum) ? props.schema.enum : null;
+	const wikiUrl = props.registry?.formContext?.wikiUrl;
+	if (!text && !wikiUrl && !values) return null;
 	return (
-		<span className="fnc-help" title={text} aria-label={text}>
-			ⓘ
+		<span className="fnc-help-wrap">
+			<button
+				type="button"
+				className="fnc-help"
+				aria-label="Help"
+				title="Help"
+				onClick={() => setOpen((o) => !o)}
+			>
+				ⓘ
+			</button>
+			{open && (
+				<div className="fnc-help-panel">
+					{text && <p className="fnc-help-desc">{text}</p>}
+					{values && (
+						<p className="fnc-help-values">
+							Values: {values.map((v) => String(v)).join(", ")}
+						</p>
+					)}
+					{wikiUrl && (
+						<a href={wikiUrl} target="_blank" rel="noreferrer">
+							FluidNC wiki ↗
+						</a>
+					)}
+				</div>
+			)}
 		</span>
 	);
 }
@@ -508,7 +583,11 @@ function AxesEditor({
 				{...formProps}
 				schema={levelSchema}
 				formData={levelData}
-				formContext={{ ...formProps.formContext, pathPrefix: "axes" }}
+				formContext={{
+					...formProps.formContext,
+					pathPrefix: "axes",
+					wikiUrl: wikiFor("axes"),
+				}}
 				onChange={(e) => {
 					const next = { ...axes };
 					for (const k of AXIS_LEVEL_KEYS) delete next[k];
@@ -558,6 +637,7 @@ function AxesEditor({
 						formContext={{
 							...formProps.formContext,
 							pathPrefix: `axes.${active}`,
+							wikiUrl: wikiFor("axes"),
 						}}
 						onChange={(e) => patchAxis(e.formData ?? {})}
 					>
@@ -578,6 +658,7 @@ function AxesEditor({
 								formContext={{
 									...formProps.formContext,
 									pathPrefix: `axes.${active}.motor0`,
+									wikiUrl: SECTION_WIKI.__motor,
 								}}
 								onChange={(e) => patchAxis({ motor0: e.formData ?? {} })}
 							>
@@ -615,6 +696,7 @@ function AxesEditor({
 									formContext={{
 										...formProps.formContext,
 										pathPrefix: `axes.${active}.motor1`,
+											wikiUrl: SECTION_WIKI.__motor,
 									}}
 									onChange={(e) => patchAxis({ motor1: e.formData ?? {} })}
 								>
@@ -841,6 +923,7 @@ function SpindleEditor({
 							formContext={{
 								...formProps.formContext,
 								pathPrefix: currentType,
+									wikiUrl: SECTION_WIKI[currentType] ?? SECTION_WIKI.__spindle,
 							}}
 							onChange={(e) =>
 								setConfig((prev) => ({
@@ -895,6 +978,7 @@ function SectionEditor({
 					{...formProps}
 					schema={scalarSchema}
 					formData={pick(config, scalarKeys)}
+					formContext={{ ...formProps.formContext, wikiUrl: SECTION_WIKI.__top }}
 					onChange={(e) => {
 						const data = (e.formData ?? {}) as Record<string, unknown>;
 						setConfig((prev) => {
@@ -926,7 +1010,7 @@ function SectionEditor({
 						{...formProps}
 						schema={{ ...resolveRef(schemaForKey(k)), $defs: schema.$defs } as RJSFSchema}
 						formData={(config[k] ?? {}) as Record<string, unknown>}
-						formContext={{ ...formProps.formContext, pathPrefix: k }}
+						formContext={{ ...formProps.formContext, pathPrefix: k, wikiUrl: wikiFor(k) }}
 						onChange={(e) =>
 							setConfig((prev) => ({ ...prev, [k]: e.formData ?? {} }))
 						}

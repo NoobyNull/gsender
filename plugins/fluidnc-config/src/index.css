@@ -750,3 +750,53 @@
 .fnc-footer-sep {
 	opacity: 0.5;
 }
+
+/* Field help popover (ⓘ → expandable panel) */
+.fnc-help-wrap {
+	position: relative;
+	display: inline-block;
+	margin-left: 0.35rem;
+}
+.fnc-help {
+	border: none;
+	background: none;
+	color: var(--primary, #3b82f6);
+	cursor: pointer;
+	font-size: 0.9rem;
+	padding: 0;
+	line-height: 1;
+}
+.fnc-help-panel {
+	position: absolute;
+	z-index: 10;
+	top: 1.4rem;
+	left: 0;
+	width: 22rem;
+	max-width: 60vw;
+	background: var(--surface-elevated, #fff);
+	color: var(--content-primary, #1a1a2e);
+	border: 1px solid var(--border, #ccd);
+	border-radius: 6px;
+	padding: 0.6rem 0.75rem;
+	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+	font-weight: 400;
+	white-space: normal;
+}
+.fnc-help-desc {
+	margin: 0 0 0.4rem;
+	font-size: 0.85rem;
+	line-height: 1.5;
+}
+.fnc-help-values {
+	margin: 0 0 0.4rem;
+	font-size: 0.82rem;
+	color: var(--content-secondary, #556);
+}
+.fnc-help-panel a {
+	color: var(--primary, #3b82f6);
+	font-size: 0.85rem;
+	text-decoration: none;
+}
+.fnc-help-panel a:hover {
+	text-decoration: underline;
+}
