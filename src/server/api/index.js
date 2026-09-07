@@ -26,6 +26,7 @@ import * as commands from "./api.commands";
 import * as controllers from "./api.controllers";
 import * as events from "./api.events";
 import * as files from "./api.file";
+import * as fluidnc from "./api.fluidnc";
 import * as gcode from "./api.gcode";
 import * as jobStats from "./api.jobstats";
 import * as logs from "./api.log";
@@ -49,6 +50,7 @@ export {
 	controllers,
 	events,
 	files,
+	fluidnc,
 	gcode,
 	jobStats,
 	logs,

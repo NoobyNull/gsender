@@ -464,6 +464,17 @@ const appMain = () => {
 			api.preferences.replace,
 		);
 
+		// FluidNC board proxy (config get/set over the board's WebUI HTTP API)
+		app.get(urljoin(settings.route, "api/fluidnc/files"), api.fluidnc.listFiles);
+		app.get(
+			urljoin(settings.route, "api/fluidnc/download"),
+			api.fluidnc.downloadFile,
+		);
+		app.post(
+			urljoin(settings.route, "api/fluidnc/upload"),
+			api.fluidnc.uploadFile,
+		);
+
 		// Plugins
 		app.get(urljoin(settings.route, "api/plugins"), api.plugins.fetch);
 		app.post(

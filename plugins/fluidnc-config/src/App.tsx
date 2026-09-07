@@ -307,6 +307,9 @@ export default function App() {
 		{ label: string; path: string }[] | null
 	>(null);
 	const [ghLoading, setGhLoading] = useState(false);
+	const [boardHost, setBoardHost] = useState("127.0.0.1");
+	const [boardBusy, setBoardBusy] = useState("");
+	const [boardMsg, setBoardMsg] = useState("");
 
 	const activeGroup =
 		SECTION_GROUPS.find((g) => g.title === section) ?? SECTION_GROUPS[0];
@@ -422,6 +425,62 @@ export default function App() {
 		URL.revokeObjectURL(a.href);
 	};
 
+	// Board sync via gSender's same-origin FluidNC proxy (server relays to the
+	// board's WebUI HTTP file API — the sandbox can't reach the board directly).
+	const loadFromBoard = () => {
+		setBoardBusy("load");
+		setBoardMsg("");
+		fetch(
+			`/api/fluidnc/download?host=${encodeURIComponent(boardHost)}&name=config.yaml`,
+		)
+			.then(async (r) => {
+				const text = await r.text();
+				if (!r.ok) {
+					let msg = text;
+					try {
+						msg = JSON.parse(text).msg || text;
+					} catch {
+						/* plain text */
+					}
+					throw new Error(msg);
+				}
+				loadYamlText(text, `config.yaml (from ${boardHost})`);
+				setBoardMsg(`Loaded config.yaml from ${boardHost}`);
+			})
+			.catch((e) => setBoardMsg(`Load failed: ${e.message}`))
+			.finally(() => setBoardBusy(""));
+	};
+
+	const saveToBoard = () => {
+		setBoardBusy("save");
+		setBoardMsg("");
+		fetch(
+			`/api/fluidnc/upload?host=${encodeURIComponent(boardHost)}&name=config.yaml`,
+			{
+				method: "POST",
+				headers: { "Content-Type": "text/plain" },
+				body: yamlOut,
+			},
+		)
+			.then(async (r) => {
+				const text = await r.text();
+				if (!r.ok) {
+					let msg = text;
+					try {
+						msg = JSON.parse(text).msg || text;
+					} catch {
+						/* plain text */
+					}
+					throw new Error(msg);
+				}
+				setBoardMsg(
+					`Saved config.yaml to ${boardHost}. Restart the controller ($Bye) to apply.`,
+				);
+			})
+			.catch((e) => setBoardMsg(`Save failed: ${e.message}`))
+			.finally(() => setBoardBusy(""));
+	};
+
 	return (
 		<div className="fnc-root">
 			<header className="fnc-toolbar">
@@ -501,6 +560,34 @@ export default function App() {
 					Validate &amp; Download
 				</button>
 			</header>
+
+			<div className="fnc-board">
+				<span className="fnc-board-label">Board</span>
+				<input
+					className="fnc-board-host"
+					value={boardHost}
+					onChange={(e) => setBoardHost(e.target.value)}
+					placeholder="IP or hostname"
+					aria-label="Board IP or hostname"
+				/>
+				<button
+					type="button"
+					className="fnc-btn"
+					disabled={!!boardBusy}
+					onClick={loadFromBoard}
+				>
+					{boardBusy === "load" ? "Loading…" : "Load from board"}
+				</button>
+				<button
+					type="button"
+					className="fnc-btn fnc-primary"
+					disabled={!!boardBusy}
+					onClick={saveToBoard}
+				>
+					{boardBusy === "save" ? "Saving…" : "Save to board"}
+				</button>
+				{boardMsg && <span className="fnc-board-msg">{boardMsg}</span>}
+			</div>
 
 			{error && <div className="fnc-error">{error}</div>}
 

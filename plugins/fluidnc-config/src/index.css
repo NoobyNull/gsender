@@ -228,3 +228,29 @@
 	color: #667;
 	font-size: 0.82rem;
 }
+
+/* Board sync bar */
+.fnc-board {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	flex-wrap: wrap;
+	padding: 0.5rem;
+	margin-top: 0.5rem;
+	background: #eef6ee;
+	border: 1px solid #bcd8bc;
+	border-radius: 4px;
+}
+
+.fnc-board-label {
+	font-weight: 600;
+}
+
+.fnc-board-host {
+	width: 12rem;
+}
+
+.fnc-board-msg {
+	font-size: 0.85rem;
+	color: #335;
+}
