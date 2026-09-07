@@ -1171,8 +1171,9 @@ export default function App() {
 	}, [config]);
 
 	// Extra selectable pins contributed by the current config: each configured
-	// uart_channelN exposes uart_channelN.0..15 addressable pins (companion IO
-	// over UART, e.g. the uartio example). They appear in every pin dropdown.
+	// uart_channelN exposes uart_channelN.0..17 addressable pins (companion IO
+	// over UART — e.g. bdring's Airedale expander adds 18). They appear in the
+	// user_inputs/user_outputs pin dropdowns.
 	const extraPins = useMemo(() => {
 		const pins: {
 			pin: string;
@@ -1184,7 +1185,7 @@ export default function App() {
 		for (const key of Object.keys(config)) {
 			const m = key.match(/^uart_channel(\d+)$/);
 			if (m) {
-				for (let i = 0; i < 16; i++) {
+				for (let i = 0; i < 18; i++) {
 					pins.push({
 						pin: `uart_channel${m[1]}.${i}`,
 						input: true,

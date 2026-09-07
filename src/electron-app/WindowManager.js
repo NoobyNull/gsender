@@ -151,8 +151,15 @@ class WindowManager {
 			window.webContents.send("maximize-window");
 		});
 
-		// Open every external link in a new window
-		// https://github.com/electron/electron/blob/master/docs/api/web-contents.md
+		// Open external links (including target=_blank / window.open from plugin
+		// iframes) in the system browser. `new-window` is deprecated and no longer
+		// fires in modern Electron; setWindowOpenHandler is the supported hook.
+		webContents.setWindowOpenHandler(({ url }) => {
+			if (/^https?:\/\//i.test(url)) {
+				shell.openExternal(url);
+			}
+			return { action: "deny" };
+		});
 		webContents.on("new-window", (event, url) => {
 			event.preventDefault();
 			shell.openExternal(url);
