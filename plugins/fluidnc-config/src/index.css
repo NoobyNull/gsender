@@ -837,3 +837,26 @@
 	flex-wrap: wrap;
 	margin-top: 0.75rem;
 }
+
+/* Editable YAML textarea */
+.fnc-yaml-edit {
+	width: 100%;
+	resize: none;
+	border: none;
+	outline: none;
+	font-family: var(--font-mono, monospace);
+	font-size: 0.8rem;
+	line-height: 1.45;
+	tab-size: 2;
+}
+.fnc-yaml-err {
+	color: var(--text-danger, #d33);
+	font-weight: 400;
+}
+
+.fnc-yaml-pane .fnc-yaml-edit {
+	max-width: none;
+	height: 100%;
+	background: var(--surface-sunken, #f4f4f8);
+	color: var(--content-primary, #333);
+}

@@ -328,7 +328,6 @@ const SECTION_GROUPS: { title: string; keys: string[] }[] = [
 			"board",
 			"meta",
 			"stepping",
-			"kinematics",
 			"start",
 			"parking",
 			"arc_tolerance_mm",
@@ -513,9 +512,13 @@ const isDeprecatedKey = (key: string): boolean => {
 	return false;
 };
 
+// Advanced sections intentionally not surfaced in the UI — hand-add in YAML if
+// needed. kinematics auto-defaults to Cartesian when absent.
+const HIDDEN_KEYS = new Set(["kinematics"]);
+
 const groupedKeys = new Set(SECTION_GROUPS.flatMap((g) => g.keys));
 const otherKeys = Object.keys(schema.properties ?? {}).filter(
-	(k) => !groupedKeys.has(k) && !isDeprecatedKey(k),
+	(k) => !groupedKeys.has(k) && !isDeprecatedKey(k) && !HIDDEN_KEYS.has(k),
 );
 if (otherKeys.length) {
 	SECTION_GROUPS.push({ title: "Other", keys: otherKeys });
@@ -1110,6 +1113,11 @@ export default function App() {
 	const [boardHost, setBoardHost] = useState("127.0.0.1");
 	const [boardBusy, setBoardBusy] = useState("");
 	const [boardMsg, setBoardMsg] = useState("");
+	// Editable YAML pane: local draft text + parse error. While the pane is
+	// focused we don't overwrite the user's text from the form side.
+	const [yamlDraft, setYamlDraft] = useState("");
+	const [yamlEditing, setYamlEditing] = useState(false);
+	const [yamlError, setYamlError] = useState("");
 
 	const activeGroup =
 		SECTION_GROUPS.find((g) => g.title === section) ?? SECTION_GROUPS[0];
@@ -1121,6 +1129,31 @@ export default function App() {
 			return `# serialization error: ${e}`;
 		}
 	}, [config]);
+
+	// Keep the editable pane in sync with the form, except while the user is
+	// typing in it (so their edits/cursor aren't clobbered).
+	useEffect(() => {
+		if (!yamlEditing) setYamlDraft(yamlOut);
+	}, [yamlOut, yamlEditing]);
+
+	// Parse the pane's YAML back into the config as the user types.
+	const onYamlEdit = (text: string) => {
+		setYamlDraft(text);
+		try {
+			const doc = yaml.load(text, { json: true });
+			if (doc && typeof doc === "object" && !Array.isArray(doc)) {
+				setConfig(doc as Record<string, unknown>);
+				setYamlError("");
+			} else if (text.trim() === "") {
+				setConfig({});
+				setYamlError("");
+			} else {
+				setYamlError("YAML must be a mapping");
+			}
+		} catch (e) {
+			setYamlError(String((e as Error).message).split("\n")[0]);
+		}
+	};
 
 	const pinIssues = useMemo(() => analyzePins(config), [config]);
 
@@ -1488,10 +1521,21 @@ export default function App() {
 
 				{showYaml && (
 					<aside className="fnc-yaml-pane">
-						<div className="fnc-yaml-head">config.yaml (live)</div>
-						<pre className="fnc-yaml">
-							<code>{yamlOut}</code>
-						</pre>
+						<div className="fnc-yaml-head">
+							config.yaml (editable)
+							{yamlError && <span className="fnc-yaml-err"> — {yamlError}</span>}
+						</div>
+						<textarea
+							className="fnc-yaml fnc-yaml-edit"
+							spellCheck={false}
+							value={yamlDraft}
+							onChange={(e) => onYamlEdit(e.target.value)}
+							onFocus={() => setYamlEditing(true)}
+							onBlur={() => {
+								setYamlEditing(false);
+								setYamlError("");
+							}}
+						/>
 					</aside>
 				)}
 			</div>
