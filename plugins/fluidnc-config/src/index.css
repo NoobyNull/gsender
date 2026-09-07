@@ -5,8 +5,8 @@
 }
 
 .fnc-root {
-	max-width: 60rem;
-	margin: 0 auto;
+	width: 100%;
+	box-sizing: border-box;
 	padding: 1rem;
 }
 
@@ -271,7 +271,7 @@
 }
 
 .fnc-yaml-pane {
-	flex: 0 0 30rem;
+	flex: 0 0 34rem;
 	max-width: 40vw;
 	position: sticky;
 	top: 3.2rem;
