@@ -21,6 +21,7 @@ import type {
 
 const initialState: ControllerState = {
 	type: "",
+	detectedFirmware: "",
 	settings: {
 		parameters: {},
 		settings: {},
@@ -322,6 +323,10 @@ const controllerSlice = createSlice({
 		) => {
 			const { type } = action.payload;
 			state.type = type;
+			// Record the detected firmware once at connect; controller:state
+			// events later overwrite `type` with the Grbl-family tag, but this
+			// keeps the real identity for the connection badge.
+			state.detectedFirmware = type;
 		},
 		updateSDCardMountStatus: (
 			state,
