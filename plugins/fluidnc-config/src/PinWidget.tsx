@@ -68,6 +68,7 @@ export default function PinAwareTextWidget(props: WidgetProps) {
 			<div className="fnc-pin-row">
 				<select
 					id={id}
+					className="fnc-pin-gpio"
 					value={pinByName.has(parsed.base) ? parsed.base : "__custom"}
 					onChange={(e) => {
 						if (e.target.value !== "__custom") {
@@ -102,30 +103,31 @@ export default function PinAwareTextWidget(props: WidgetProps) {
 					})}
 				</select>
 
-				{parsed.base !== "NO_PIN" && def?.pull && (
-					<select
-						aria-label="Pull resistor"
-						value={parsed.pull}
-						onChange={(e) =>
-							update({ pull: e.target.value as "" | "pu" | "pd" })
-						}
-					>
-						<option value="">No pull</option>
-						<option value="pu">Pull up</option>
-						<option value="pd">Pull down</option>
-					</select>
-				)}
+				{/* Always render pull + invert in fixed columns (disabled when N/A)
+				    so the layout never shifts as pins are selected. */}
+				<select
+					className="fnc-pin-pull"
+					aria-label="Pull resistor"
+					value={parsed.pull}
+					disabled={parsed.base === "NO_PIN" || !def?.pull}
+					onChange={(e) =>
+						update({ pull: e.target.value as "" | "pu" | "pd" })
+					}
+				>
+					<option value="">No pull</option>
+					<option value="pu">Pull up</option>
+					<option value="pd">Pull down</option>
+				</select>
 
-				{parsed.base !== "NO_PIN" && (
-					<label className="fnc-pin-invert">
-						<input
-							type="checkbox"
-							checked={parsed.inverted}
-							onChange={(e) => update({ inverted: e.target.checked })}
-						/>
-						Invert
-					</label>
-				)}
+				<label className="fnc-pin-invert">
+					<input
+						type="checkbox"
+						checked={parsed.inverted}
+						disabled={parsed.base === "NO_PIN"}
+						onChange={(e) => update({ inverted: e.target.checked })}
+					/>
+					Invert
+				</label>
 			</div>
 
 			{def?.comment && <div className="fnc-pin-note">{def.comment}</div>}

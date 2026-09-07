@@ -1104,9 +1104,67 @@ function SectionEditor({
 	);
 }
 
+// A fresh FluidNC board always has a config; start from a sensible default
+// 3-axis machine (like the firmware's Test Drive) rather than an empty doc.
+const DEFAULT_CONFIG: Record<string, unknown> = {
+	name: "My CNC",
+	board: "None",
+	stepping: {
+		engine: "RMT",
+		idle_ms: 250,
+		pulse_us: 4,
+		dir_delay_us: 0,
+		disable_delay_us: 0,
+	},
+	axes: {
+		shared_stepper_disable_pin: "NO_PIN",
+		x: {
+			steps_per_mm: 80,
+			max_rate_mm_per_min: 5000,
+			acceleration_mm_per_sec2: 100,
+			max_travel_mm: 300,
+			motor0: {
+				standard_stepper: {
+					step_pin: "NO_PIN",
+					direction_pin: "NO_PIN",
+					disable_pin: "NO_PIN",
+				},
+			},
+		},
+		y: {
+			steps_per_mm: 80,
+			max_rate_mm_per_min: 5000,
+			acceleration_mm_per_sec2: 100,
+			max_travel_mm: 300,
+			motor0: {
+				standard_stepper: {
+					step_pin: "NO_PIN",
+					direction_pin: "NO_PIN",
+					disable_pin: "NO_PIN",
+				},
+			},
+		},
+		z: {
+			steps_per_mm: 400,
+			max_rate_mm_per_min: 1000,
+			acceleration_mm_per_sec2: 50,
+			max_travel_mm: 100,
+			motor0: {
+				standard_stepper: {
+					step_pin: "NO_PIN",
+					direction_pin: "NO_PIN",
+					disable_pin: "NO_PIN",
+				},
+			},
+		},
+	},
+};
+
 export default function App() {
-	const [config, setConfig] = useState<Record<string, unknown>>({});
-	const [sourceName, setSourceName] = useState<string>("(new config)");
+	const [config, setConfig] = useState<Record<string, unknown>>(
+		() => structuredClone(DEFAULT_CONFIG),
+	);
+	const [sourceName, setSourceName] = useState<string>("(default config)");
 	const [error, setError] = useState<string>("");
 	const [showYaml, setShowYaml] = useState(true);
 	const [section, setSection] = useState(SECTION_GROUPS[0].title);
