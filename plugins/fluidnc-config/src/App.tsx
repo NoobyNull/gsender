@@ -250,7 +250,6 @@ const SECTION_GROUPS: { title: string; keys: string[] }[] = [
 			"i2so",
 			"spi",
 			"sdcard",
-			"extenders",
 		],
 	},
 	{
@@ -394,9 +393,25 @@ const HARDWARE_PRESETS: {
 	},
 ];
 
+// Deprecated sections (e.g. `extenders`) are hidden — the schema flags them
+// "DO NOT USE" and they carry no usable fields.
+const isDeprecatedKey = (key: string): boolean => {
+	const props = (schema.properties ?? {}) as Record<string, unknown>;
+	const node = props[key] as { $ref?: string; deprecated?: boolean } | undefined;
+	if (!node) return false;
+	if (node.deprecated) return true;
+	if (node.$ref) {
+		const def = (schema.$defs as Record<string, { deprecated?: boolean }>)?.[
+			node.$ref.replace("#/$defs/", "")
+		];
+		return !!def?.deprecated;
+	}
+	return false;
+};
+
 const groupedKeys = new Set(SECTION_GROUPS.flatMap((g) => g.keys));
 const otherKeys = Object.keys(schema.properties ?? {}).filter(
-	(k) => !groupedKeys.has(k),
+	(k) => !groupedKeys.has(k) && !isDeprecatedKey(k),
 );
 if (otherKeys.length) {
 	SECTION_GROUPS.push({ title: "Other", keys: otherKeys });
