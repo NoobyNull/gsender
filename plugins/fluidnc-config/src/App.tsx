@@ -44,14 +44,14 @@ function Toggle({
 	);
 }
 
-// rjsf boolean widget rendered as the Apple toggle (point 2's "slider button").
+// rjsf boolean widget: field name on the left, Apple toggle on the right —
+// consistent with the other horizontal rows.
 function ToggleWidget(props: WidgetProps) {
 	return (
-		<Toggle
-			on={props.value === true}
-			onChange={(v) => props.onChange(v)}
-			label={props.label}
-		/>
+		<div className="fnc-bool-row">
+			<span className="fnc-bool-label">{props.label}</span>
+			<Toggle on={props.value === true} onChange={(v) => props.onChange(v)} />
+		</div>
 	);
 }
 

@@ -357,6 +357,7 @@
 
 .fnc-switch-track {
 	position: relative;
+	display: inline-block;
 	width: 42px;
 	height: 24px;
 	background: #c8ccd4;
@@ -685,4 +686,17 @@
 .fnc-pin-conflict,
 .fnc-pin-err {
 	color: var(--destructive, #b02a2a);
+}
+
+/* Boolean rows: name left, toggle right (consistent with other rows) */
+.fnc-bool-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	gap: 1rem;
+}
+.fnc-bool-label {
+	color: var(--content-primary, #374151);
+	font-weight: 500;
 }
