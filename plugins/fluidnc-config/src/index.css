@@ -422,3 +422,19 @@
 	padding: 0 0.9rem 0.75rem;
 	border-top: 1px solid #eef;
 }
+
+/* Prevent any wide child from forcing horizontal page scroll; keep the YAML
+   pane locked to the right and content wrapping within its column. */
+.fnc-root {
+	overflow-x: hidden;
+}
+
+.fnc-content {
+	overflow-x: hidden;
+	word-break: break-word;
+}
+
+.fnc-content .field-description,
+.fnc-help {
+	overflow-wrap: anywhere;
+}

@@ -145,6 +145,42 @@ const titleOneOfBranches = (node: unknown): void => {
 };
 titleOneOfBranches(schema);
 
+// Some fields are intentionally typeless in the schema (e.g. `meta` free-form
+// notes, and the on/off flags). rjsf can't render a typeless field ("Unknown
+// field type undefined"), which dumps a huge unwrapped error and blows out the
+// layout width. Assign a type to every schema leaf that has none: known flags
+// become booleans (nice toggles), everything else a string.
+const BOOL_KEYS = new Set([
+	"verbose_errors",
+	"report_inches",
+	"use_line_numbers",
+	"enable_parking_override_control",
+]);
+const STRUCTURAL = [
+	"type",
+	"$ref",
+	"properties",
+	"oneOf",
+	"anyOf",
+	"allOf",
+	"patternProperties",
+	"enum",
+	"items",
+];
+const fixTypelessLeaves = (node: unknown, key?: string): void => {
+	if (!node || typeof node !== "object") return;
+	if (Array.isArray(node)) {
+		node.forEach((n) => fixTypelessLeaves(n));
+		return;
+	}
+	const obj = node as Record<string, unknown>;
+	if ("description" in obj && !STRUCTURAL.some((k) => k in obj)) {
+		obj.type = key && BOOL_KEYS.has(key) ? "boolean" : "string";
+	}
+	for (const [k, v] of Object.entries(obj)) fixTypelessLeaves(v, k);
+};
+fixTypelessLeaves(schema);
+
 // Section groups over the schema's top-level keys, mirroring the FluidNC web
 // installer's layout. Keys the schema grows later fall into "Other".
 // Tab taxonomy mirrors the FluidNC web installer (General / Axes / IO /
