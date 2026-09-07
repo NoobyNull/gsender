@@ -962,11 +962,39 @@ export default function App() {
 		return map;
 	}, [config]);
 
+	// Extra selectable pins contributed by the current config: each configured
+	// uart_channelN exposes uart_channelN.0..15 addressable pins (companion IO
+	// over UART, e.g. the uartio example). They appear in every pin dropdown.
+	const extraPins = useMemo(() => {
+		const pins: {
+			pin: string;
+			input: boolean;
+			output: boolean;
+			pull: boolean;
+			comment?: string;
+		}[] = [];
+		for (const key of Object.keys(config)) {
+			const m = key.match(/^uart_channel(\d+)$/);
+			if (m) {
+				for (let i = 0; i < 16; i++) {
+					pins.push({
+						pin: `uart_channel${m[1]}.${i}`,
+						input: true,
+						output: true,
+						pull: false,
+						comment: `UART channel ${m[1]} companion pin ${i}`,
+					});
+				}
+			}
+		}
+		return pins;
+	}, [config]);
+
 	const commonFormProps: FormProps = {
 		validator,
 		widgets: { TextWidget: PinAwareTextWidget, CheckboxWidget: ToggleWidget },
 		templates: { DescriptionFieldTemplate: HelpTooltip },
-		formContext: { usedPins },
+		formContext: { usedPins, extraPins },
 		idSeparator: "/",
 		experimental_defaultFormStateBehavior: {
 			emptyObjectFields: "skipDefaults",

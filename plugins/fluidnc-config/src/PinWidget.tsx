@@ -1,7 +1,7 @@
 // Code written by: Claude (Anthropic), via Claude Code.
 import type { WidgetProps } from "@rjsf/utils";
 import { getDefaultRegistry } from "@rjsf/core";
-import { ESP32_PINS, PIN_BY_NAME, parsePin, formatPin } from "./pins";
+import { ESP32_PINS, type PinDef, parsePin, formatPin } from "./pins";
 
 const DefaultText = getDefaultRegistry().widgets.TextWidget;
 
@@ -41,9 +41,14 @@ export default function PinAwareTextWidget(props: WidgetProps) {
 	}
 
 	const usedPins: Map<string, string[]> = formContext?.usedPins ?? new Map();
+	// Extra pins contributed by the current config (e.g. uart_channelN.M pins
+	// once a UART channel is configured). Merged with the static ESP32 pins.
+	const extraPins: PinDef[] = formContext?.extraPins ?? [];
+	const allPins = extraPins.length ? [...ESP32_PINS, ...extraPins] : ESP32_PINS;
+	const pinByName = new Map(allPins.map((p) => [p.pin, p]));
 	const selfPath = idToPath(id, formContext?.pathPrefix ?? "");
 	const parsed = parsePin(value);
-	const def = PIN_BY_NAME.get(parsed.base);
+	const def = pinByName.get(parsed.base);
 
 	const otherUsers = (usedPins.get(parsed.base) ?? []).filter(
 		(p) => p !== selfPath,
@@ -58,10 +63,10 @@ export default function PinAwareTextWidget(props: WidgetProps) {
 			<div className="fnc-pin-row">
 				<select
 					id={id}
-					value={PIN_BY_NAME.has(parsed.base) ? parsed.base : "__custom"}
+					value={pinByName.has(parsed.base) ? parsed.base : "__custom"}
 					onChange={(e) => {
 						if (e.target.value !== "__custom") {
-							const nd = PIN_BY_NAME.get(e.target.value);
+							const nd = pinByName.get(e.target.value);
 							update({
 								base: e.target.value,
 								// drop a pull that the new pin can't do
@@ -70,10 +75,10 @@ export default function PinAwareTextWidget(props: WidgetProps) {
 						}
 					}}
 				>
-					{!PIN_BY_NAME.has(parsed.base) && (
+					{!pinByName.has(parsed.base) && (
 						<option value="__custom">{parsed.base} (custom)</option>
 					)}
-					{ESP32_PINS.map((p) => {
+					{allPins.map((p) => {
 						const users = (usedPins.get(p.pin) ?? []).filter(
 							(u) => u !== selfPath,
 						);
