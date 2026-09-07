@@ -1647,11 +1647,11 @@ export default function App() {
 					</a>
 					. Plugin:{" "}
 					<a
-						href="https://github.com/NoobyNull/gsender"
+						href="https://github.com/NoobyNull/FluidNC-Gsender-Plugin"
 						target="_blank"
 						rel="noreferrer"
 					>
-						NoobyNull/gsender
+						FluidNC-Gsender-Plugin
 					</a>
 					.
 				</span>

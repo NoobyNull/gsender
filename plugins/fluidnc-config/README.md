@@ -31,7 +31,7 @@ This plugin and the surrounding gSender FluidNC fork build on:
   application this plugin extends.
 - **FluidNC pendant / display:** _<add your pendant repo URL here>_
 - **This fork + plugin:**
-  [NoobyNull/gsender](https://github.com/NoobyNull/gsender) (branch `fluidnc`).
+  [NoobyNull/FluidNC-Gsender-Plugin](https://github.com/NoobyNull/FluidNC-Gsender-Plugin).
 
 Documentation: **[FluidNC wiki](http://wiki.fluidnc.com/)**.
 
