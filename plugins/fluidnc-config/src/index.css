@@ -210,3 +210,21 @@
 	margin-top: 0.25rem;
 	font-weight: 600;
 }
+
+/* Hardware presets */
+.fnc-presets {
+	display: flex;
+	gap: 0.5rem;
+	align-items: center;
+	flex-wrap: wrap;
+	margin-bottom: 0.75rem;
+	padding: 0.5rem;
+	background: #f4f7ff;
+	border: 1px solid #ccd8f0;
+	border-radius: 4px;
+}
+
+.fnc-preset-hint {
+	color: #667;
+	font-size: 0.82rem;
+}

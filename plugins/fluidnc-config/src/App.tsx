@@ -129,6 +129,68 @@ const SECTION_GROUPS: { title: string; keys: string[] }[] = [
 		],
 	},
 	{ title: "Macros & ATC", keys: ["macros", "atc_manual"] },
+	{
+		// uartN / uart_channelN / i2cN are schema patternProperties (any index
+		// is legal); we surface the indexes pendants and displays actually use.
+		title: "Pendant & Display",
+		keys: [
+			"oled",
+			"i2c0",
+			"i2c1",
+			"uart1",
+			"uart2",
+			"uart_channel1",
+			"uart_channel2",
+		],
+	},
+];
+
+// Resolve a top-level key to its schema: explicit property, or the matching
+// patternProperties entry (uart1, uart_channel1, i2c0, ...).
+const schemaForKey = (key: string): unknown => {
+	const props = (schema.properties ?? {}) as Record<string, unknown>;
+	if (key in props) return props[key];
+	for (const [pattern, sub] of Object.entries(
+		(schema as { patternProperties?: Record<string, unknown> })
+			.patternProperties ?? {},
+	)) {
+		if (new RegExp(pattern).test(key)) return sub;
+	}
+	return undefined;
+};
+
+// One-click starting points for common pendant/display hardware.
+// FluidDial wired mode: 1M baud 8N1 + uart_channel with 75ms reporting
+// (per FluidNC wiki / bdring's published examples).
+const HARDWARE_PRESETS: {
+	label: string;
+	snippet: Record<string, unknown>;
+}[] = [
+	{
+		label: "FluidDial pendant (wired, UART1)",
+		snippet: {
+			uart1: {
+				txd_pin: "gpio.4",
+				rxd_pin: "gpio.16",
+				baud: 1000000,
+				mode: "8N1",
+			},
+			uart_channel1: { uart_num: 1, report_interval_ms: 75 },
+		},
+	},
+	{
+		label: "OLED status display (I2C 128x64)",
+		snippet: {
+			i2c0: { sda_pin: "gpio.21", scl_pin: "gpio.22" },
+			oled: {
+				i2c_num: 0,
+				i2c_address: 60,
+				width: 128,
+				height: 64,
+				report_interval_ms: 500,
+			},
+		},
+	},
 ];
 
 const groupedKeys = new Set(SECTION_GROUPS.flatMap((g) => g.keys));
@@ -249,17 +311,18 @@ export default function App() {
 		SECTION_GROUPS.find((g) => g.title === section) ?? SECTION_GROUPS[0];
 
 	// Sub-schema for just the active section; $defs kept so $refs resolve.
-	const sectionSchema = useMemo<RJSFSchema>(
-		() => ({
+	const sectionSchema = useMemo<RJSFSchema>(() => {
+		const properties: Record<string, unknown> = {};
+		for (const k of activeGroup.keys) {
+			const sub = schemaForKey(k);
+			if (sub) properties[k] = sub;
+		}
+		return {
 			type: "object",
-			properties: pick(
-				(schema.properties ?? {}) as Record<string, unknown>,
-				activeGroup.keys,
-			) as RJSFSchema["properties"],
+			properties: properties as RJSFSchema["properties"],
 			$defs: schema.$defs,
-		}),
-		[activeGroup],
-	);
+		};
+	}, [activeGroup]);
 
 	const sectionData = useMemo(
 		() => pick(config, activeGroup.keys),
@@ -481,6 +544,25 @@ export default function App() {
 				</nav>
 
 				<main className="fnc-content">
+					{activeGroup.title === "Pendant & Display" && (
+						<div className="fnc-presets">
+							{HARDWARE_PRESETS.map((p) => (
+								<button
+									key={p.label}
+									type="button"
+									className="fnc-btn"
+									onClick={() =>
+										setConfig((prev) => ({ ...prev, ...p.snippet }))
+									}
+								>
+									+ {p.label}
+								</button>
+							))}
+							<span className="fnc-preset-hint">
+								Presets insert typical wiring — adjust pins to your board.
+							</span>
+						</div>
+					)}
 					<Form
 						key={activeGroup.title}
 						schema={sectionSchema}
