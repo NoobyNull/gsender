@@ -598,6 +598,10 @@ function AxesEditor({
 
 	return (
 		<div>
+			<p className="fnc-axis-note">
+				Shared across <strong>all motors</strong> (global). Individual
+				disable/reset pins are set per motor, under each motor's driver.
+			</p>
 			<Form
 				{...formProps}
 				schema={levelSchema}

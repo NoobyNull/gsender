@@ -860,3 +860,12 @@
 	background: var(--surface-sunken, #f4f4f8);
 	color: var(--content-primary, #333);
 }
+
+.fnc-axis-note {
+	font-size: 0.82rem;
+	color: var(--content-secondary, #556);
+	margin: 0 0 0.5rem;
+	padding: 0.4rem 0.6rem;
+	background: var(--surface-sunken, #f1f3f5);
+	border-radius: 4px;
+}
