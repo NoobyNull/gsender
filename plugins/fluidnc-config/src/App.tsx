@@ -1,7 +1,7 @@
 // Code written by: Claude (Anthropic), via Claude Code.
 import { useMemo, useState } from "react";
 import Form from "@rjsf/core";
-import type { RJSFSchema } from "@rjsf/utils";
+import type { RJSFSchema, WidgetProps } from "@rjsf/utils";
 import validator from "@rjsf/validator-ajv8";
 import yaml from "js-yaml";
 import schemaJson from "./vendor/fluidnc-config-schema.json";
@@ -16,6 +16,42 @@ function HelpTooltip({ description }: { description?: unknown }) {
 		<span className="fnc-help" title={text} aria-label={text}>
 			ⓘ
 		</span>
+	);
+}
+
+// Apple-style toggle switch.
+function Toggle({
+	on,
+	onChange,
+	label,
+}: {
+	on: boolean;
+	onChange: (v: boolean) => void;
+	label?: string;
+}) {
+	return (
+		<label className="fnc-switch">
+			<input
+				type="checkbox"
+				checked={on}
+				onChange={(e) => onChange(e.target.checked)}
+			/>
+			<span className="fnc-switch-track">
+				<span className="fnc-switch-thumb" />
+			</span>
+			{label && <span className="fnc-switch-label">{label}</span>}
+		</label>
+	);
+}
+
+// rjsf boolean widget rendered as the Apple toggle (point 2's "slider button").
+function ToggleWidget(props: WidgetProps) {
+	return (
+		<Toggle
+			on={props.value === true}
+			onChange={(v) => props.onChange(v)}
+			label={props.label}
+		/>
 	);
 }
 
@@ -206,6 +242,56 @@ const schemaForKey = (key: string): unknown => {
 	}
 	return undefined;
 };
+
+// Does a top-level key hold an object section (collapsible) or a scalar field
+// (always shown)? Resolves a $ref into $defs before checking.
+const resolveRef = (node: unknown): Record<string, unknown> => {
+	let cur = node as Record<string, unknown>;
+	const defs = (schema.$defs ?? {}) as Record<string, unknown>;
+	for (let i = 0; i < 5 && cur && typeof cur.$ref === "string"; i++) {
+		const name = cur.$ref.replace("#/$defs/", "");
+		cur = defs[name] as Record<string, unknown>;
+	}
+	return cur ?? {};
+};
+
+const isObjectKey = (key: string): boolean => {
+	const resolved = resolveRef(schemaForKey(key));
+	const t = resolved.type;
+	const type = Array.isArray(t) ? t : [t];
+	return (
+		type.includes("object") ||
+		"properties" in resolved ||
+		"patternProperties" in resolved ||
+		"oneOf" in resolved
+	);
+};
+
+// A collapsible section with an Apple-style enable toggle. Off = the key is
+// absent from config and the body is hidden; on = key present and its form
+// renders.
+function CollapsibleSection({
+	sectionKey,
+	present,
+	onToggle,
+	children,
+}: {
+	sectionKey: string;
+	present: boolean;
+	onToggle: (on: boolean) => void;
+	children: React.ReactNode;
+}) {
+	return (
+		<div className={`fnc-section ${present ? "open" : ""}`}>
+			<div className="fnc-section-head">
+				<Toggle on={present} onChange={onToggle} />
+				<span className="fnc-section-title">{sectionKey}</span>
+				<HelpTooltip description={resolveRef(schemaForKey(sectionKey)).description} />
+			</div>
+			{present && <div className="fnc-section-body">{children}</div>}
+		</div>
+	);
+}
 
 // One-click starting points for common pendant/display hardware.
 // FluidDial wired mode: 1M baud 8N1 + uart_channel with 75ms reporting
@@ -453,6 +539,83 @@ const analyzePins = (config: Record<string, unknown>): PinIssue[] => {
 	return issues;
 };
 
+// Renders a section group: scalar fields in one always-shown form, and each
+// object sub-section as a collapsible card with an Apple enable toggle.
+function SectionEditor({
+	group,
+	config,
+	setConfig,
+	formProps,
+}: {
+	group: { title: string; keys: string[] };
+	config: Record<string, unknown>;
+	setConfig: (fn: (prev: Record<string, unknown>) => Record<string, unknown>) => void;
+	formProps: FormProps;
+}) {
+	const scalarKeys = group.keys.filter(
+		(k) => schemaForKey(k) && !isObjectKey(k),
+	);
+	const objectKeys = group.keys.filter((k) => isObjectKey(k));
+
+	const scalarSchema = {
+		type: "object",
+		properties: Object.fromEntries(
+			scalarKeys.map((k) => [k, schemaForKey(k)]),
+		) as RJSFSchema["properties"],
+		$defs: schema.$defs,
+	} as RJSFSchema;
+
+	return (
+		<div>
+			{scalarKeys.length > 0 && (
+				<Form
+					{...formProps}
+					schema={scalarSchema}
+					formData={pick(config, scalarKeys)}
+					onChange={(e) => {
+						const data = (e.formData ?? {}) as Record<string, unknown>;
+						setConfig((prev) => {
+							const next = { ...prev };
+							for (const k of scalarKeys) delete next[k];
+							return { ...next, ...data };
+						});
+					}}
+				>
+					<span />
+				</Form>
+			)}
+
+			{objectKeys.map((k) => (
+				<CollapsibleSection
+					key={k}
+					sectionKey={k}
+					present={k in config}
+					onToggle={(on) =>
+						setConfig((prev) => {
+							if (on) return { ...prev, [k]: prev[k] ?? {} };
+							const next = { ...prev };
+							delete next[k];
+							return next;
+						})
+					}
+				>
+					<Form
+						{...formProps}
+						schema={{ ...resolveRef(schemaForKey(k)), $defs: schema.$defs } as RJSFSchema}
+						formData={(config[k] ?? {}) as Record<string, unknown>}
+						formContext={{ ...formProps.formContext, pathPrefix: k }}
+						onChange={(e) =>
+							setConfig((prev) => ({ ...prev, [k]: e.formData ?? {} }))
+						}
+					>
+						<span />
+					</Form>
+				</CollapsibleSection>
+			))}
+		</div>
+	);
+}
+
 export default function App() {
 	const [config, setConfig] = useState<Record<string, unknown>>({});
 	const [sourceName, setSourceName] = useState<string>("(new config)");
@@ -469,35 +632,6 @@ export default function App() {
 
 	const activeGroup =
 		SECTION_GROUPS.find((g) => g.title === section) ?? SECTION_GROUPS[0];
-
-	// Sub-schema for just the active section; $defs kept so $refs resolve.
-	const sectionSchema = useMemo<RJSFSchema>(() => {
-		const properties: Record<string, unknown> = {};
-		for (const k of activeGroup.keys) {
-			const sub = schemaForKey(k);
-			if (sub) properties[k] = sub;
-		}
-		return {
-			type: "object",
-			properties: properties as RJSFSchema["properties"],
-			$defs: schema.$defs,
-		};
-	}, [activeGroup]);
-
-	const sectionData = useMemo(
-		() => pick(config, activeGroup.keys),
-		[config, activeGroup],
-	);
-
-	const mergeSection = (data: Record<string, unknown> | undefined) => {
-		setConfig((prev) => {
-			const next = { ...prev };
-			for (const k of activeGroup.keys) {
-				delete next[k];
-			}
-			return { ...next, ...(data ?? {}) };
-		});
-	};
 
 	const yamlOut = useMemo(() => {
 		try {
@@ -520,7 +654,7 @@ export default function App() {
 
 	const commonFormProps: FormProps = {
 		validator,
-		widgets: { TextWidget: PinAwareTextWidget },
+		widgets: { TextWidget: PinAwareTextWidget, CheckboxWidget: ToggleWidget },
 		templates: { DescriptionFieldTemplate: HelpTooltip },
 		formContext: { usedPins },
 		idSeparator: "/",
@@ -823,16 +957,13 @@ export default function App() {
 							formProps={commonFormProps}
 						/>
 					) : (
-						<Form
-							{...commonFormProps}
+						<SectionEditor
 							key={activeGroup.title}
-							schema={sectionSchema}
-							formData={sectionData}
-							onChange={(e) => mergeSection(e.formData)}
-						>
-							{/* no submit button; changes merge live into the config */}
-							<span />
-						</Form>
+							group={activeGroup}
+							config={config}
+							setConfig={setConfig}
+							formProps={commonFormProps}
+						/>
 					)}
 				</main>
 
