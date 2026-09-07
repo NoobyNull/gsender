@@ -392,9 +392,9 @@ type FormProps = Omit<
 	"schema" | "formData" | "onChange"
 >;
 
-// Custom Axes editor: X/Y/Z/A/B/C sub-tabs (point 1) with progressive
-// disclosure — x/y/z (schema minimum) plus any axis already in the config are
-// shown; the rest hide behind "+ add". Axis-level shared pins sit above.
+// Custom Axes editor: all six axes (X/Y/Z/A/B/C) are always-visible sub-tabs;
+// each has an Enable toggle that adds/removes it from the config. Axis-level
+// shared pins sit above the tabs.
 function AxesEditor({
 	axes,
 	setAxes,
@@ -404,12 +404,7 @@ function AxesEditor({
 	setAxes: (next: Record<string, unknown>) => void;
 	formProps: FormProps;
 }) {
-	const present = AXIS_LETTERS.filter(
-		(a) => a in axes || ["x", "y", "z"].includes(a),
-	);
-	const addable = AXIS_LETTERS.filter((a) => !present.includes(a));
-	const [axis, setAxis] = useState("x");
-	const active = present.includes(axis) ? axis : "x";
+	const [active, setAxis] = useState("x");
 
 	const axisSchema = {
 		...(schema.$defs?.axisLetter as object),
@@ -445,7 +440,7 @@ function AxesEditor({
 			</Form>
 
 			<div className="fnc-axis-tabs">
-				{present.map((a) => (
+				{AXIS_LETTERS.map((a) => (
 					<button
 						key={a}
 						type="button"
@@ -453,37 +448,46 @@ function AxesEditor({
 						onClick={() => setAxis(a)}
 					>
 						{a.toUpperCase()}
-					</button>
-				))}
-				{addable.map((a) => (
-					<button
-						key={a}
-						type="button"
-						className="fnc-axis-add"
-						title={`Add ${a.toUpperCase()} axis`}
-						onClick={() => {
-							setAxes({ ...axes, [a]: {} });
-							setAxis(a);
-						}}
-					>
-						+{a.toUpperCase()}
+						{a in axes && <span className="fnc-dot" />}
 					</button>
 				))}
 			</div>
 
-			<Form
-				{...formProps}
-				key={active}
-				schema={axisSchema}
-				formData={axisData}
-				formContext={{
-					...formProps.formContext,
-					pathPrefix: `axes.${active}`,
-				}}
-				onChange={(e) => setAxes({ ...axes, [active]: e.formData ?? {} })}
-			>
-				<span />
-			</Form>
+			<div className="fnc-axis-enable">
+				<span className="fnc-bool-label">Enable {active.toUpperCase()} axis</span>
+				<Toggle
+					on={active in axes}
+					onChange={(on) => {
+						const next = { ...axes };
+						if (on) {
+							next[active] = axes[active] ?? {};
+						} else {
+							delete next[active];
+						}
+						setAxes(next);
+					}}
+				/>
+			</div>
+
+			{active in axes ? (
+				<Form
+					{...formProps}
+					key={active}
+					schema={axisSchema}
+					formData={axisData}
+					formContext={{
+						...formProps.formContext,
+						pathPrefix: `axes.${active}`,
+					}}
+					onChange={(e) => setAxes({ ...axes, [active]: e.formData ?? {} })}
+				>
+					<span />
+				</Form>
+			) : (
+				<p className="fnc-axis-off">
+					{active.toUpperCase()} axis is disabled. Enable it to configure.
+				</p>
+			)}
 		</div>
 	);
 }
