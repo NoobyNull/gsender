@@ -1,0 +1,14 @@
+diff --git a/src/server/vite-server.js b/src/server/vite-server.js
+index c47b77c36..ad134f664 100644
+--- a/src/server/vite-server.js
++++ b/src/server/vite-server.js
+@@ -9,6 +9,9 @@ export const viteServer = async (app) => {
+ 
+ 	const devDir = path.resolve(projectRoot, "src/app");
+ 	const prodDirCandidates = [
++		// When bundled into main.js (packaged app), __dirname is the asar root
++		// and the built UI lives alongside it at <asar>/app.
++		path.resolve(__dirname, "app"),
+ 		path.resolve(bundleRoot, "app"),
+ 		path.resolve(projectRoot, "dist/gsender/app"),
+ 	];
