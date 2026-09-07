@@ -7,6 +7,18 @@ import yaml from "js-yaml";
 import schemaJson from "./vendor/fluidnc-config-schema.json";
 import PinAwareTextWidget from "./PinWidget";
 
+// Schema descriptions are long maintainer notes. Render them as a hover "ⓘ"
+// next to the field instead of a wall of text under it.
+function HelpTooltip({ description }: { description?: unknown }) {
+	const text = typeof description === "string" ? description.trim() : "";
+	if (!text) return null;
+	return (
+		<span className="fnc-help" title={text} aria-label={text}>
+			ⓘ
+		</span>
+	);
+}
+
 // Machine configs vendored from bdring/fluidnc-config-files (official +
 // contributed) and FluidNC's example_configs (all GPL-3, same as gSender).
 // Lazy glob keeps them out of the main bundle; each loads on selection.
@@ -60,7 +72,42 @@ const fetchGitHubTemplates = async (): Promise<
 		.sort((a, b) => a.label.localeCompare(b.label));
 };
 
-const schema = schemaJson as RJSFSchema;
+// Every pin field references pinAny = oneOf:[pin, pinDeprecated], which rjsf
+// renders as a useless "Option 1 / Option 2" type selector. Collapse it to the
+// plain pin string so each pin renders as a single field (our PinWidget). The
+// deprecated pinext syntax still loads fine — it's just a string.
+const schema = structuredClone(schemaJson) as RJSFSchema;
+if (schema.$defs?.pinAny && schema.$defs.pin) {
+	schema.$defs.pinAny = { ...schema.$defs.pin, default: "NO_PIN" };
+}
+
+// oneOf/anyOf branches (e.g. the motor driver picker: standard_stepper,
+// tmc_2209, …) carry no title, so rjsf labels them "Option 1..N". Title each
+// branch by the property it selects, turning the selector into a real
+// driver/type picker that reveals only that choice's fields.
+const titleOneOfBranches = (node: unknown): void => {
+	if (!node || typeof node !== "object") return;
+	if (Array.isArray(node)) {
+		node.forEach(titleOneOfBranches);
+		return;
+	}
+	const obj = node as Record<string, unknown>;
+	for (const key of ["oneOf", "anyOf"]) {
+		const branches = obj[key];
+		if (Array.isArray(branches)) {
+			for (const b of branches) {
+				if (b && typeof b === "object" && !("title" in b)) {
+					const req = (b as { required?: string[] }).required?.[0];
+					const props = (b as { properties?: object }).properties;
+					const name = req || (props && Object.keys(props)[0]);
+					if (name) (b as { title?: string }).title = name;
+				}
+			}
+		}
+	}
+	for (const v of Object.values(obj)) titleOneOfBranches(v);
+};
+titleOneOfBranches(schema);
 
 // Section groups over the schema's top-level keys, mirroring the FluidNC web
 // installer's layout. Keys the schema grows later fall into "Other".
@@ -301,7 +348,7 @@ export default function App() {
 	const [config, setConfig] = useState<Record<string, unknown>>({});
 	const [sourceName, setSourceName] = useState<string>("(new config)");
 	const [error, setError] = useState<string>("");
-	const [showYaml, setShowYaml] = useState(false);
+	const [showYaml, setShowYaml] = useState(true);
 	const [section, setSection] = useState(SECTION_GROUPS[0].title);
 	const [ghTemplates, setGhTemplates] = useState<
 		{ label: string; path: string }[] | null
@@ -607,13 +654,7 @@ export default function App() {
 				</div>
 			)}
 
-			{showYaml && (
-				<pre className="fnc-yaml">
-					<code>{yamlOut}</code>
-				</pre>
-			)}
-
-			<div className="fnc-body">
+			<div className={`fnc-body ${showYaml ? "with-yaml" : ""}`}>
 				<nav className="fnc-nav">
 					{SECTION_GROUPS.map((g) => {
 						const hasData = g.keys.some((k) => k in config);
@@ -657,6 +698,7 @@ export default function App() {
 						formData={sectionData}
 						validator={validator}
 						widgets={{ TextWidget: PinAwareTextWidget }}
+						templates={{ DescriptionFieldTemplate: HelpTooltip }}
 						formContext={{ usedPins }}
 						idSeparator="/"
 						experimental_defaultFormStateBehavior={{
@@ -670,6 +712,15 @@ export default function App() {
 						<span />
 					</Form>
 				</main>
+
+				{showYaml && (
+					<aside className="fnc-yaml-pane">
+						<div className="fnc-yaml-head">config.yaml (live)</div>
+						<pre className="fnc-yaml">
+							<code>{yamlOut}</code>
+						</pre>
+					</aside>
+				)}
 			</div>
 		</div>
 	);
