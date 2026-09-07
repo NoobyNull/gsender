@@ -97,3 +97,116 @@
 	font-size: 0.85rem;
 	margin: 0.1rem 0 0.25rem;
 }
+
+/* Section layout */
+.fnc-body {
+	display: flex;
+	gap: 1rem;
+	align-items: flex-start;
+}
+
+.fnc-nav {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	position: sticky;
+	top: 3.2rem;
+	min-width: 11rem;
+}
+
+.fnc-nav-item {
+	text-align: left;
+	padding: 0.45rem 0.7rem;
+	border: 1px solid transparent;
+	border-radius: 4px;
+	background: none;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+
+.fnc-nav-item:hover {
+	background: #eef;
+}
+
+.fnc-nav-item.active {
+	background: #e3e9ff;
+	border-color: #aab6e8;
+	font-weight: 600;
+}
+
+.fnc-dot {
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: #3a6df0;
+	display: inline-block;
+}
+
+.fnc-content {
+	flex: 1;
+	min-width: 0;
+}
+
+.fnc-primary {
+	background: #3a6df0;
+	color: #fff;
+	border-color: #2c56c4;
+	font-weight: 600;
+}
+
+.fnc-primary:hover {
+	background: #2c56c4;
+}
+
+/* Pin conflict panel */
+.fnc-pins {
+	background: #fff7e0;
+	border: 1px solid #d9a520;
+	border-radius: 4px;
+	padding: 0.5rem 0.75rem;
+	margin: 0.5rem 0;
+}
+
+.fnc-pins ul {
+	margin: 0.3rem 0 0;
+	padding-left: 1.2rem;
+}
+
+.fnc-pin-err {
+	color: #b02a2a;
+}
+
+.fnc-pin-warn {
+	color: #8a6d00;
+}
+
+/* Pin widget */
+.fnc-pin-row {
+	display: flex;
+	gap: 0.4rem;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.fnc-pin-invert {
+	display: flex !important;
+	align-items: center;
+	gap: 0.25rem;
+	margin-top: 0 !important;
+	font-weight: 400 !important;
+}
+
+.fnc-pin-note {
+	color: #667;
+	font-size: 0.82rem;
+	margin-top: 0.2rem;
+}
+
+.fnc-pin-conflict {
+	color: #b02a2a;
+	font-size: 0.85rem;
+	margin-top: 0.25rem;
+	font-weight: 600;
+}

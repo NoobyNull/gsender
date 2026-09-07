@@ -4,6 +4,7 @@ import type { RJSFSchema } from "@rjsf/utils";
 import validator from "@rjsf/validator-ajv8";
 import yaml from "js-yaml";
 import schemaJson from "./vendor/fluidnc-config-schema.json";
+import PinAwareTextWidget from "./PinWidget";
 
 // Machine configs vendored from bdring/fluidnc-config-files (official +
 // contributed) and FluidNC's example_configs (all GPL-3, same as gSender).
@@ -60,38 +61,219 @@ const fetchGitHubTemplates = async (): Promise<
 
 const schema = schemaJson as RJSFSchema;
 
-// ponytail: rjsf renders the entire official schema generically. Custom pin
-// widgets / section-by-section navigation come later if the flat form proves
-// unwieldy on real configs.
+// Section groups over the schema's top-level keys, mirroring the FluidNC web
+// installer's layout. Keys the schema grows later fall into "Other".
+// Tab taxonomy mirrors the FluidNC web installer (General / Axes / IO /
+// Spindle), plus a tab for macros/ATC which the installer doesn't cover.
+const SECTION_GROUPS: { title: string; keys: string[] }[] = [
+	{
+		title: "General",
+		keys: [
+			"name",
+			"board",
+			"meta",
+			"stepping",
+			"kinematics",
+			"start",
+			"parking",
+			"arc_tolerance_mm",
+			"junction_deviation_mm",
+			"planner_blocks",
+			"verbose_errors",
+			"report_inches",
+			"use_line_numbers",
+			"enable_parking_override_control",
+		],
+	},
+	{ title: "Axes", keys: ["axes"] },
+	{
+		title: "IO",
+		keys: [
+			"control",
+			"probe",
+			"user_inputs",
+			"coolant",
+			"user_outputs",
+			"status_outputs",
+			"oled",
+			"i2so",
+			"spi",
+			"sdcard",
+			"extenders",
+		],
+	},
+	{
+		title: "Spindle",
+		keys: [
+			"PWM",
+			"10V",
+			"DAC",
+			"HBridge",
+			"Laser",
+			"Relay",
+			"OnOff",
+			"BESC",
+			"PlasmaSpindle",
+			"NoSpindle",
+			"ModbusVFD",
+			"Huanyang",
+			"H2A",
+			"YL620",
+			"DeltaMS300",
+			"FolinnBD600",
+			"H100",
+			"MollomG70",
+			"NowForever",
+			"SiemensV20",
+			"DanfossVLT2800",
+		],
+	},
+	{ title: "Macros & ATC", keys: ["macros", "atc_manual"] },
+];
+
+const groupedKeys = new Set(SECTION_GROUPS.flatMap((g) => g.keys));
+const otherKeys = Object.keys(schema.properties ?? {}).filter(
+	(k) => !groupedKeys.has(k),
+);
+if (otherKeys.length) {
+	SECTION_GROUPS.push({ title: "Other", keys: otherKeys });
+}
+
+const pick = (obj: Record<string, unknown>, keys: string[]) => {
+	const out: Record<string, unknown> = {};
+	for (const k of keys) {
+		if (k in obj) out[k] = obj[k];
+	}
+	return out;
+};
+
+// ---- Pin usage analysis ----------------------------------------------------
+// The schema validates pin syntax per field; cross-field constraints (a GPIO
+// assigned twice, ESP32 hardware limits) need document-wide analysis.
+
+interface PinUse {
+	pin: string; // normalized, e.g. "gpio.22"
+	path: string; // config path, e.g. "axes.x.motor0.step_pin"
+	key: string; // leaf key name
+}
+
+const PIN_RE = /^(gpio|i2so|uart_channel\d+)\.(\d+)/i;
+
+const collectPins = (
+	node: unknown,
+	path: string,
+	out: PinUse[],
+): PinUse[] => {
+	if (typeof node === "string") {
+		const m = node.trim().match(PIN_RE);
+		if (m) {
+			out.push({
+				pin: `${m[1].toLowerCase()}.${m[2]}`,
+				path,
+				key: path.split(".").pop() ?? path,
+			});
+		}
+	} else if (node && typeof node === "object" && !Array.isArray(node)) {
+		for (const [k, v] of Object.entries(node)) {
+			collectPins(v, path ? `${path}.${k}` : k, out);
+		}
+	} else if (Array.isArray(node)) {
+		node.forEach((v, i) => collectPins(v, `${path}[${i}]`, out));
+	}
+	return out;
+};
+
+// Output-driving leaf keys (heuristic; used for the ESP32 input-only check).
+const OUTPUT_KEY_RE =
+	/(step|direction|disable|enable|output|pwm|forward|reverse|cs|txd|sck|mosi|data|ws|bck|flood|mist|relay)_pin$/i;
+
+interface PinIssue {
+	level: "error" | "warn";
+	message: string;
+}
+
+const analyzePins = (config: Record<string, unknown>): PinIssue[] => {
+	const uses = collectPins(config, "", []);
+	const issues: PinIssue[] = [];
+
+	const byPin = new Map<string, PinUse[]>();
+	for (const u of uses) {
+		(byPin.get(u.pin) ?? byPin.set(u.pin, []).get(u.pin))!.push(u);
+	}
+
+	for (const [pin, list] of byPin) {
+		if (list.length > 1) {
+			issues.push({
+				level: "error",
+				message: `${pin} assigned ${list.length}×: ${list.map((u) => u.path).join(", ")}`,
+			});
+		}
+		const m = pin.match(/^gpio\.(\d+)$/);
+		if (m) {
+			const n = Number(m[1]);
+			// ESP32 (the overwhelmingly common FluidNC target): 6-11 are flash
+			// pins; 34-39 are input-only. Other MCUs differ — heuristic warning.
+			if (n >= 6 && n <= 11) {
+				issues.push({
+					level: "error",
+					message: `${pin} (${list[0].path}) is an ESP32 flash pin — using it will crash the controller`,
+				});
+			}
+			if (n >= 34 && n <= 39 && list.some((u) => OUTPUT_KEY_RE.test(u.key))) {
+				issues.push({
+					level: "warn",
+					message: `${pin} is input-only on ESP32 but used as an output (${list
+						.filter((u) => OUTPUT_KEY_RE.test(u.key))
+						.map((u) => u.path)
+						.join(", ")})`,
+				});
+			}
+		}
+	}
+
+	return issues;
+};
+
 export default function App() {
 	const [config, setConfig] = useState<Record<string, unknown>>({});
 	const [sourceName, setSourceName] = useState<string>("(new config)");
 	const [error, setError] = useState<string>("");
 	const [showYaml, setShowYaml] = useState(false);
+	const [section, setSection] = useState(SECTION_GROUPS[0].title);
 	const [ghTemplates, setGhTemplates] = useState<
 		{ label: string; path: string }[] | null
 	>(null);
 	const [ghLoading, setGhLoading] = useState(false);
 
-	const loadGhList = () => {
-		setGhLoading(true);
-		fetchGitHubTemplates()
-			.then((list) => {
-				setGhTemplates(list);
-				setError("");
-			})
-			.catch((e) => setError(`GitHub listing failed: ${e}`))
-			.finally(() => setGhLoading(false));
-	};
+	const activeGroup =
+		SECTION_GROUPS.find((g) => g.title === section) ?? SECTION_GROUPS[0];
 
-	const loadGhTemplate = (path: string) => {
-		fetch(`https://raw.githubusercontent.com/${GH_REPO}/${GH_BRANCH}/${path}`)
-			.then((r) => {
-				if (!r.ok) throw new Error(`HTTP ${r.status}`);
-				return r.text();
-			})
-			.then((text) => loadYamlText(text, path.split("/").pop() ?? "config.yaml"))
-			.catch((e) => setError(`GitHub download failed: ${e}`));
+	// Sub-schema for just the active section; $defs kept so $refs resolve.
+	const sectionSchema = useMemo<RJSFSchema>(
+		() => ({
+			type: "object",
+			properties: pick(
+				(schema.properties ?? {}) as Record<string, unknown>,
+				activeGroup.keys,
+			) as RJSFSchema["properties"],
+			$defs: schema.$defs,
+		}),
+		[activeGroup],
+	);
+
+	const sectionData = useMemo(
+		() => pick(config, activeGroup.keys),
+		[config, activeGroup],
+	);
+
+	const mergeSection = (data: Record<string, unknown> | undefined) => {
+		setConfig((prev) => {
+			const next = { ...prev };
+			for (const k of activeGroup.keys) {
+				delete next[k];
+			}
+			return { ...next, ...(data ?? {}) };
+		});
 	};
 
 	const yamlOut = useMemo(() => {
@@ -100,6 +282,17 @@ export default function App() {
 		} catch (e) {
 			return `# serialization error: ${e}`;
 		}
+	}, [config]);
+
+	const pinIssues = useMemo(() => analyzePins(config), [config]);
+
+	// pin -> paths using it; consumed by PinAwareTextWidget via formContext.
+	const usedPins = useMemo(() => {
+		const map = new Map<string, string[]>();
+		for (const u of collectPins(config, "", [])) {
+			(map.get(u.pin) ?? map.set(u.pin, []).get(u.pin))!.push(u.path);
+		}
+		return map;
 	}, [config]);
 
 	const loadYamlText = (text: string, name: string) => {
@@ -118,6 +311,29 @@ export default function App() {
 		}
 	};
 
+	const loadGhList = () => {
+		setGhLoading(true);
+		fetchGitHubTemplates()
+			.then((list) => {
+				setGhTemplates(list);
+				setError("");
+			})
+			.catch((e) => setError(`GitHub listing failed: ${e}`))
+			.finally(() => setGhLoading(false));
+	};
+
+	const loadGhTemplate = (path: string) => {
+		fetch(`https://raw.githubusercontent.com/${GH_REPO}/${GH_BRANCH}/${path}`)
+			.then((r) => {
+				if (!r.ok) throw new Error(`HTTP ${r.status}`);
+				return r.text();
+			})
+			.then((text) =>
+				loadYamlText(text, path.split("/").pop() ?? "config.yaml"),
+			)
+			.catch((e) => setError(`GitHub download failed: ${e}`));
+	};
+
 	const openFile = (ev: React.ChangeEvent<HTMLInputElement>) => {
 		const file = ev.target.files?.[0];
 		if (!file) return;
@@ -126,6 +342,14 @@ export default function App() {
 	};
 
 	const download = () => {
+		const result = validator.validateFormData(config, schema);
+		if (result.errors.length) {
+			setError(
+				`Config has ${result.errors.length} validation issue(s) — downloading anyway. First: ${result.errors[0].stack}`,
+			);
+		} else {
+			setError("");
+		}
 		const blob = new Blob([yamlOut], { type: "text/yaml" });
 		const a = document.createElement("a");
 		a.href = URL.createObjectURL(blob);
@@ -198,9 +422,6 @@ export default function App() {
 						))}
 					</select>
 				)}
-				<button type="button" className="fnc-btn" onClick={download}>
-					Download YAML
-				</button>
 				<button
 					type="button"
 					className="fnc-btn"
@@ -208,9 +429,32 @@ export default function App() {
 				>
 					{showYaml ? "Hide YAML" : "View YAML"}
 				</button>
+				<button
+					type="button"
+					className="fnc-btn fnc-primary"
+					onClick={download}
+				>
+					Validate &amp; Download
+				</button>
 			</header>
 
 			{error && <div className="fnc-error">{error}</div>}
+
+			{pinIssues.length > 0 && (
+				<div className="fnc-pins">
+					<strong>Pin conflicts ({pinIssues.length})</strong>
+					<ul>
+						{pinIssues.map((i) => (
+							<li
+								key={i.message}
+								className={i.level === "error" ? "fnc-pin-err" : "fnc-pin-warn"}
+							>
+								{i.message}
+							</li>
+						))}
+					</ul>
+				</div>
+			)}
 
 			{showYaml && (
 				<pre className="fnc-yaml">
@@ -218,22 +462,45 @@ export default function App() {
 				</pre>
 			)}
 
-			<Form
-				schema={schema}
-				formData={config}
-				validator={validator}
-				experimental_defaultFormStateBehavior={{
-					emptyObjectFields: "skipDefaults",
-				}}
-				liveValidate={false}
-				showErrorList="bottom"
-				onChange={(e) => setConfig(e.formData ?? {})}
-				onSubmit={() => download()}
-			>
-				<button type="submit" className="fnc-btn fnc-submit">
-					Validate &amp; Download
-				</button>
-			</Form>
+			<div className="fnc-body">
+				<nav className="fnc-nav">
+					{SECTION_GROUPS.map((g) => {
+						const hasData = g.keys.some((k) => k in config);
+						return (
+							<button
+								key={g.title}
+								type="button"
+								className={`fnc-nav-item ${g.title === section ? "active" : ""}`}
+								onClick={() => setSection(g.title)}
+							>
+								{g.title}
+								{hasData && <span className="fnc-dot" />}
+							</button>
+						);
+					})}
+				</nav>
+
+				<main className="fnc-content">
+					<Form
+						key={activeGroup.title}
+						schema={sectionSchema}
+						formData={sectionData}
+						validator={validator}
+						widgets={{ TextWidget: PinAwareTextWidget }}
+						formContext={{ usedPins }}
+						idSeparator="/"
+						experimental_defaultFormStateBehavior={{
+							emptyObjectFields: "skipDefaults",
+						}}
+						liveValidate={false}
+						showErrorList={false}
+						onChange={(e) => mergeSection(e.formData)}
+					>
+						{/* no submit button; changes merge live into the config */}
+						<span />
+					</Form>
+				</main>
+			</div>
 		</div>
 	);
 }
