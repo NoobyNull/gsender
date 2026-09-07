@@ -4,15 +4,58 @@ import type { RJSFSchema } from "@rjsf/utils";
 import validator from "@rjsf/validator-ajv8";
 import yaml from "js-yaml";
 import schemaJson from "./vendor/fluidnc-config-schema.json";
-// Board templates vendored from FluidNC's example_configs (GPL-3, same as gSender).
-import tmpl4xAtc from "./vendor/4x_2209_atc.yaml?raw";
-import tmpl4xAtcClass from "./vendor/4x_2209_atc_class.yaml?raw";
-import tmplRp2040 from "./vendor/rp2040_3axis.yaml?raw";
 
-const TEMPLATES: Record<string, string> = {
-	"4-axis TMC2209 + ATC": tmpl4xAtc,
-	"4-axis TMC2209 + ATC (class)": tmpl4xAtcClass,
-	"RP2040 3-axis": tmplRp2040,
+// Machine configs vendored from bdring/fluidnc-config-files (official +
+// contributed) and FluidNC's example_configs (all GPL-3, same as gSender).
+// Lazy glob keeps them out of the main bundle; each loads on selection.
+const TEMPLATE_LOADERS = import.meta.glob("./vendor/configs/**/*.yaml", {
+	query: "?raw",
+	import: "default",
+}) as Record<string, () => Promise<string>>;
+
+// "./vendor/configs/official/6_Pack_OLED.yaml" -> { group: "official", label: "6 Pack OLED" }
+const templateMeta = (path: string) => {
+	const parts = path.replace("./vendor/configs/", "").split("/");
+	const group = parts[0];
+	const label = parts
+		.slice(1)
+		.join(" / ")
+		.replace(/\.yaml$/, "")
+		.replace(/_/g, " ");
+	return { group, label };
+};
+
+const TEMPLATE_GROUPS: Record<string, { label: string; path: string }[]> = {};
+for (const path of Object.keys(TEMPLATE_LOADERS).sort()) {
+	const { group, label } = templateMeta(path);
+	(TEMPLATE_GROUPS[group] ??= []).push({ label, path });
+}
+
+// Live template listing from the community repo. GitHub's API and raw hosts
+// send CORS headers, so this works straight from the plugin sandbox; the
+// vendored set above remains the offline fallback.
+const GH_REPO = "bdring/fluidnc-config-files";
+const GH_BRANCH = "main";
+
+const fetchGitHubTemplates = async (): Promise<
+	{ label: string; path: string }[]
+> => {
+	const res = await fetch(
+		`https://api.github.com/repos/${GH_REPO}/git/trees/${GH_BRANCH}?recursive=1`,
+	);
+	if (!res.ok) {
+		throw new Error(`GitHub API ${res.status}`);
+	}
+	const tree = (await res.json()) as {
+		tree: { path: string; type: string }[];
+	};
+	return tree.tree
+		.filter((e) => e.type === "blob" && e.path.endsWith(".yaml"))
+		.map((e) => ({
+			label: e.path.replace(/\.yaml$/, "").replace(/_/g, " "),
+			path: e.path,
+		}))
+		.sort((a, b) => a.label.localeCompare(b.label));
 };
 
 const schema = schemaJson as RJSFSchema;
@@ -25,6 +68,31 @@ export default function App() {
 	const [sourceName, setSourceName] = useState<string>("(new config)");
 	const [error, setError] = useState<string>("");
 	const [showYaml, setShowYaml] = useState(false);
+	const [ghTemplates, setGhTemplates] = useState<
+		{ label: string; path: string }[] | null
+	>(null);
+	const [ghLoading, setGhLoading] = useState(false);
+
+	const loadGhList = () => {
+		setGhLoading(true);
+		fetchGitHubTemplates()
+			.then((list) => {
+				setGhTemplates(list);
+				setError("");
+			})
+			.catch((e) => setError(`GitHub listing failed: ${e}`))
+			.finally(() => setGhLoading(false));
+	};
+
+	const loadGhTemplate = (path: string) => {
+		fetch(`https://raw.githubusercontent.com/${GH_REPO}/${GH_BRANCH}/${path}`)
+			.then((r) => {
+				if (!r.ok) throw new Error(`HTTP ${r.status}`);
+				return r.text();
+			})
+			.then((text) => loadYamlText(text, path.split("/").pop() ?? "config.yaml"))
+			.catch((e) => setError(`GitHub download failed: ${e}`));
+	};
 
 	const yamlOut = useMemo(() => {
 		try {
@@ -36,7 +104,9 @@ export default function App() {
 
 	const loadYamlText = (text: string, name: string) => {
 		try {
-			const doc = yaml.load(text);
+			// json:true tolerates duplicated mapping keys (last wins) — FluidNC's
+			// own parser accepts them and community configs contain them.
+			const doc = yaml.load(text, { json: true });
 			if (doc === null || typeof doc !== "object" || Array.isArray(doc)) {
 				throw new Error("not a YAML mapping");
 			}
@@ -82,17 +152,52 @@ export default function App() {
 					className="fnc-btn"
 					value=""
 					onChange={(e) => {
-						const key = e.target.value;
-						if (key) loadYamlText(TEMPLATES[key], `${key}.yaml`);
+						const path = e.target.value;
+						if (!path) return;
+						const name = templateMeta(path).label.replace(/ /g, "_");
+						TEMPLATE_LOADERS[path]()
+							.then((text) => loadYamlText(text, `${name}.yaml`))
+							.catch((err) => setError(`Could not load template: ${err}`));
 					}}
 				>
 					<option value="">Start from template…</option>
-					{Object.keys(TEMPLATES).map((k) => (
-						<option key={k} value={k}>
-							{k}
-						</option>
+					{Object.entries(TEMPLATE_GROUPS).map(([group, items]) => (
+						<optgroup key={group} label={`${group} (bundled)`}>
+							{items.map((t) => (
+								<option key={t.path} value={t.path}>
+									{t.label}
+								</option>
+							))}
+						</optgroup>
 					))}
 				</select>
+				{ghTemplates === null ? (
+					<button
+						type="button"
+						className="fnc-btn"
+						disabled={ghLoading}
+						onClick={loadGhList}
+					>
+						{ghLoading ? "Fetching…" : "Fetch latest from GitHub"}
+					</button>
+				) : (
+					<select
+						className="fnc-btn"
+						value=""
+						onChange={(e) => {
+							if (e.target.value) loadGhTemplate(e.target.value);
+						}}
+					>
+						<option value="">
+							GitHub templates ({ghTemplates.length})…
+						</option>
+						{ghTemplates.map((t) => (
+							<option key={t.path} value={t.path}>
+								{t.label}
+							</option>
+						))}
+					</select>
+				)}
 				<button type="button" className="fnc-btn" onClick={download}>
 					Download YAML
 				</button>
