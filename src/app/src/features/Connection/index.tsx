@@ -370,11 +370,13 @@ export default connect((store) => {
 	const connection = get(store, "connection", {});
 	const ports: Port[] = get(connection, "ports", []);
 	const unrecognizedPorts: Port[] = get(connection, "unrecognizedPorts", []);
-	const reportedFirmware: FirmwareFlavour = get(
-		store,
-		"controller.type",
-		"Grbl",
-	);
+	// The redux controller.type is overwritten to the base "Grbl" family tag
+	// by streaming controller:state events (FluidNC is driven as Grbl-compatible
+	// internally, on purpose). The lib controller.type keeps the *detected*
+	// firmware from serialport:openController, so prefer it for the badge.
+	const reportedFirmware: FirmwareFlavour =
+		(controller.type as FirmwareFlavour) ||
+		get(store, "controller.type", "Grbl");
 
 	return {
 		ports,
