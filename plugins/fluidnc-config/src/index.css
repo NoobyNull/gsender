@@ -438,3 +438,112 @@
 .fnc-help {
 	overflow-wrap: anywhere;
 }
+
+/* ============================================================
+   gSender-matched skin: blue-accent left nav + horizontal rows
+   ============================================================ */
+:root {
+	--gs-blue: #3b82f6;
+	--gs-blue-400: #60a5fa;
+	--gs-blue-bg: rgba(59, 130, 246, 0.12);
+	--gs-border: #e5e7eb;
+	--gs-divider: #f1f3f5;
+	--gs-label: #374151;
+	--gs-muted: #6b7280;
+}
+
+/* Left navigation — gSender Config menu look */
+.fnc-nav {
+	min-width: 13rem;
+	gap: 0;
+	border: 1px solid var(--gs-border);
+	border-left: 0;
+	background: #fff;
+	padding: 0;
+}
+
+.fnc-nav-item {
+	border-radius: 0;
+	border-left: 3px solid transparent;
+	border-bottom: 1px solid var(--gs-divider);
+	padding: 0.65rem 1rem;
+	color: var(--gs-label);
+	font-weight: 500;
+}
+
+.fnc-nav-item:hover {
+	background: transparent;
+	color: var(--gs-blue);
+	border-left-color: var(--gs-blue);
+}
+
+.fnc-nav-item.active {
+	background: var(--gs-blue-bg);
+	color: var(--gs-blue);
+	border-left-color: var(--gs-blue-400);
+	font-weight: 500;
+}
+
+.fnc-dot {
+	background: var(--gs-blue);
+}
+
+/* Leaf fields as horizontal rows: label left, control right */
+.fnc-content .form-group.field-string,
+.fnc-content .form-group.field-number,
+.fnc-content .form-group.field-integer,
+.fnc-content .form-group.field-boolean {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	margin: 0;
+	padding: 0.5rem 0.25rem;
+	border-bottom: 1px solid var(--gs-divider);
+}
+
+.fnc-content .form-group.field-string > .control-label,
+.fnc-content .form-group.field-number > .control-label,
+.fnc-content .form-group.field-integer > .control-label,
+.fnc-content .form-group.field-boolean > .control-label {
+	flex: 1;
+	margin: 0;
+	font-weight: 500;
+	color: var(--gs-label);
+}
+
+/* Controls sit at the right, consistent width */
+.fnc-content .form-group.field-string > input,
+.fnc-content .form-group.field-number > input,
+.fnc-content .form-group.field-integer > input,
+.fnc-content .form-group.field-string > select,
+.fnc-content .form-group.field-string > .fnc-pin {
+	flex: 0 0 auto;
+	width: 18rem;
+	max-width: 45%;
+}
+
+/* Object sections keep block layout; give nested legends gSender weight */
+.fnc-content .form-group.field-object > fieldset > legend,
+.fnc-content legend {
+	color: var(--gs-label);
+	font-weight: 500;
+}
+
+/* Blue accents on the primary buttons + section titles */
+.fnc-primary {
+	background: var(--gs-blue);
+	border-color: var(--gs-blue);
+}
+
+.fnc-primary:hover {
+	background: #2f6fe0;
+}
+
+.fnc-section-title {
+	color: var(--gs-label);
+}
+
+.fnc-axis-tab.active {
+	background: var(--gs-blue);
+}
