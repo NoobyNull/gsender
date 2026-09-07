@@ -1,5 +1,5 @@
 // Code written by: Claude (Anthropic), via Claude Code.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Form from "@rjsf/core";
 import type { RJSFSchema, WidgetProps } from "@rjsf/utils";
 import validator from "@rjsf/validator-ajv8";
@@ -707,6 +707,148 @@ const analyzePins = (config: Record<string, unknown>): PinIssue[] => {
 	return issues;
 };
 
+// Spindle types grouped so the tab isn't a wall of 20 options: pick a category,
+// then a model, then configure only that one. FluidNC stores the spindle as a
+// single top-level key (PWM:, Huanyang:, …), so selecting one removes the rest.
+const SPINDLE_CATEGORIES: Record<string, string[]> = {
+	None: [],
+	"Simple (relay / on-off / PWM / 0-10V)": [
+		"PWM",
+		"10V",
+		"DAC",
+		"Relay",
+		"OnOff",
+		"HBridge",
+		"BESC",
+		"Laser",
+		"PlasmaSpindle",
+	],
+	"VFD (generic Modbus)": ["ModbusVFD"],
+	"Commercial / professional": [
+		"Huanyang",
+		"H2A",
+		"YL620",
+		"DeltaMS300",
+		"FolinnBD600",
+		"H100",
+		"MollomG70",
+		"NowForever",
+		"SiemensV20",
+		"DanfossVLT2800",
+	],
+};
+const ALL_SPINDLE_KEYS = Object.values(SPINDLE_CATEGORIES).flat();
+const spindleCategoryOf = (type: string) =>
+	Object.keys(SPINDLE_CATEGORIES).find((c) =>
+		SPINDLE_CATEGORIES[c].includes(type),
+	) ?? "None";
+
+function SpindleEditor({
+	config,
+	setConfig,
+	formProps,
+}: {
+	config: Record<string, unknown>;
+	setConfig: (fn: (prev: Record<string, unknown>) => Record<string, unknown>) => void;
+	formProps: FormProps;
+}) {
+	const currentType = ALL_SPINDLE_KEYS.find((k) => k in config) ?? null;
+	const [category, setCategory] = useState(() =>
+		currentType ? spindleCategoryOf(currentType) : "None",
+	);
+	useEffect(() => {
+		if (currentType) setCategory(spindleCategoryOf(currentType));
+	}, [currentType]);
+
+	const clearSpindle = (prev: Record<string, unknown>) => {
+		const next = { ...prev };
+		for (const k of ALL_SPINDLE_KEYS) delete next[k];
+		return next;
+	};
+
+	const chooseType = (type: string) => {
+		setConfig((prev) => {
+			const next = clearSpindle(prev);
+			if (type) next[type] = prev[type] ?? {};
+			return next;
+		});
+	};
+
+	const spindleSchema = currentType
+		? ({ ...resolveRef(schema.properties?.[currentType]), $defs: schema.$defs } as RJSFSchema)
+		: null;
+
+	return (
+		<div>
+			<div className="fnc-axis-enable">
+				<span className="fnc-bool-label">Spindle type</span>
+				<select
+					value={category}
+					onChange={(e) => {
+						setCategory(e.target.value);
+						setConfig(clearSpindle);
+					}}
+				>
+					{Object.keys(SPINDLE_CATEGORIES).map((c) => (
+						<option key={c} value={c}>
+							{c}
+						</option>
+					))}
+				</select>
+			</div>
+
+			{category !== "None" && (
+				<div className="fnc-axis-enable">
+					<span className="fnc-bool-label">Model</span>
+					<select
+						value={currentType ?? ""}
+						onChange={(e) => chooseType(e.target.value)}
+					>
+						<option value="">Select a model…</option>
+						{SPINDLE_CATEGORIES[category].map((t) => (
+							<option key={t} value={t}>
+								{t}
+							</option>
+						))}
+					</select>
+				</div>
+			)}
+
+			{currentType && spindleSchema ? (
+				<div className="fnc-section open">
+					<div className="fnc-section-head">
+						<span className="fnc-section-title">{currentType}</span>
+					</div>
+					<div className="fnc-section-body">
+						<Form
+							{...formProps}
+							key={currentType}
+							schema={spindleSchema}
+							formData={(config[currentType] ?? {}) as Record<string, unknown>}
+							formContext={{
+								...formProps.formContext,
+								pathPrefix: currentType,
+							}}
+							onChange={(e) =>
+								setConfig((prev) => ({
+									...prev,
+									[currentType]: e.formData ?? {},
+								}))
+							}
+						>
+							<span />
+						</Form>
+					</div>
+				</div>
+			) : (
+				category !== "None" && (
+					<p className="fnc-axis-off">Select a model to configure it.</p>
+				)
+			)}
+		</div>
+	);
+}
+
 // Renders a section group: scalar fields in one always-shown form, and each
 // object sub-section as a collapsible card with an Apple enable toggle.
 function SectionEditor({
@@ -1122,6 +1264,12 @@ export default function App() {
 							setAxes={(next) =>
 								setConfig((prev) => ({ ...prev, axes: next }))
 							}
+							formProps={commonFormProps}
+						/>
+					) : activeGroup.title === "Spindle" ? (
+						<SpindleEditor
+							config={config}
+							setConfig={setConfig}
 							formProps={commonFormProps}
 						/>
 					) : (
