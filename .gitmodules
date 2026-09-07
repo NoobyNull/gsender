@@ -1,0 +1,3 @@
+[submodule "plugins/fluidnc-config"]
+	path = plugins/fluidnc-config
+	url = https://github.com/NoobyNull/FluidNC-Gsender-Plugin.git
