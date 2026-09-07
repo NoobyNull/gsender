@@ -1,3 +1,4 @@
+// Code written by: Claude (Anthropic), via Claude Code.
 // ESP32 pin capability table, ported from fluid-installer's Boards.ts
 // (breiler/fluid-installer, GPL-3 — same license as gSender).
 

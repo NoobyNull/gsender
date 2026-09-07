@@ -1,4 +1,6 @@
 /*
+ * Code written by: Claude (Anthropic), via Claude Code.
+ *
  * Copyright (C) 2026 gSender FluidNC fork contributors
  *
  * This file is part of gSender.

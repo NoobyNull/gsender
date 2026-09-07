@@ -1,3 +1,4 @@
+// Code written by: Claude (Anthropic), via Claude Code.
 import type { WidgetProps } from "@rjsf/utils";
 import { getDefaultRegistry } from "@rjsf/core";
 import { ESP32_PINS, PIN_BY_NAME, parsePin, formatPin } from "./pins";

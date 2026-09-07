@@ -1,3 +1,4 @@
+// Code written by: Claude (Anthropic), via Claude Code.
 import {
 	FLUIDNC_ERRORS,
 	FLUIDNC_ALARMS,

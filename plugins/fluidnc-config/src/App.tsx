@@ -1,3 +1,4 @@
+// Code written by: Claude (Anthropic), via Claude Code.
 import { useMemo, useState } from "react";
 import Form from "@rjsf/core";
 import type { RJSFSchema } from "@rjsf/utils";

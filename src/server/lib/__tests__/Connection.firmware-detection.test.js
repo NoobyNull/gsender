@@ -1,4 +1,6 @@
 /*
+ * Code written by: Claude (Anthropic), via Claude Code.
+ *
  * Firmware auto-detection routing (Connection data listener).
  *
  * FluidNC banners contain "Grbl" as a compat shim, so detection order
