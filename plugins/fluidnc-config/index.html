@@ -4,6 +4,11 @@
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>FluidNC Configurator</title>
+		<!-- Reference the host app's compiled stylesheet so this plugin inherits
+		     gSender's theme tokens (--surface-raised, --content-primary, --border,
+		     …) and dark mode. The host toggles .dark[data-dark-theme="workshop"]
+		     on this iframe; application.css supplies the matching values. -->
+		<link rel="stylesheet" href="/src/application.css" />
 	</head>
 	<body>
 		<div id="root"></div>

@@ -547,3 +547,142 @@
 .fnc-axis-tab.active {
 	background: var(--gs-blue);
 }
+
+/* ============================================================
+   App theme integration — drive all colors from gSender's
+   tokens (defined in the linked application.css). Dark mode
+   flips automatically because the host toggles
+   .dark[data-dark-theme="workshop"] on this iframe.
+   Fallbacks keep the standalone (no application.css) build readable.
+   ============================================================ */
+.fnc-root {
+	background: var(--background, #fff);
+	color: var(--content-primary, #1a1a2e);
+}
+
+/* Toolbar / board / preset bars */
+.fnc-toolbar {
+	background: var(--surface-raised, #fff);
+	border-bottom-color: var(--border, #e5e7eb);
+}
+.fnc-source {
+	color: var(--content-muted, #6b7280);
+}
+.fnc-board,
+.fnc-presets {
+	background: var(--surface-sunken, #f1f3f5);
+	border-color: var(--border, #e5e7eb);
+}
+.fnc-board-msg,
+.fnc-preset-hint,
+.fnc-pin-note {
+	color: var(--content-secondary, #4b5563);
+}
+
+/* Buttons */
+.fnc-btn {
+	background: var(--surface-raised, #f6f6f6);
+	border-color: var(--border, #bbb);
+	color: var(--content-primary, #1a1a2e);
+}
+.fnc-btn:hover {
+	background: var(--surface-hover, #e8e8e8);
+}
+.fnc-primary,
+.fnc-axis-tab.active {
+	background: var(--primary, #3b82f6);
+	border-color: var(--primary, #3b82f6);
+	color: #fff;
+}
+
+/* Left nav */
+.fnc-nav {
+	background: var(--surface-raised, #fff);
+	border-color: var(--border, #e5e7eb);
+}
+.fnc-nav-item {
+	color: var(--content-secondary, #374151);
+	border-bottom-color: var(--border, #f1f3f5);
+}
+.fnc-nav-item:hover,
+.fnc-nav-item.active {
+	color: var(--primary, #3b82f6);
+	border-left-color: var(--primary, #60a5fa);
+}
+.fnc-nav-item.active {
+	background: color-mix(in srgb, var(--primary, #3b82f6) 14%, transparent);
+}
+.fnc-dot,
+.fnc-help {
+	color: var(--primary, #3b82f6);
+}
+
+/* Cards / sections */
+.fnc-section {
+	background: var(--card, #fafbff);
+	border-color: var(--border, #dde);
+}
+.fnc-section.open {
+	background: var(--surface-raised, #fff);
+}
+.fnc-section-body {
+	border-top-color: var(--border, #eef);
+}
+.fnc-section-title,
+.fnc-content .control-label,
+.fnc-content legend {
+	color: var(--content-primary, #374151);
+}
+
+/* Form controls */
+.fnc-root input[type="text"],
+.fnc-root input[type="number"],
+.fnc-root select,
+.fnc-root textarea {
+	background: var(--surface-raised, #fff);
+	color: var(--content-primary, #1a1a2e);
+	border-color: var(--input, #bbb);
+}
+.fnc-root fieldset {
+	border-color: var(--border, #ddd);
+}
+.fnc-content .form-group.field-string,
+.fnc-content .form-group.field-number,
+.fnc-content .form-group.field-integer,
+.fnc-content .form-group.field-boolean {
+	border-bottom-color: var(--border, #f1f3f5);
+}
+
+/* Live YAML pane */
+.fnc-yaml-pane {
+	border-color: var(--border, #ccd);
+}
+.fnc-yaml-head {
+	background: var(--surface-sunken, #eef);
+	border-bottom-color: var(--border, #ccd);
+	color: var(--content-primary, #1a1a2e);
+}
+.fnc-yaml {
+	background: var(--surface-sunken, #f4f4f8);
+	color: var(--content-secondary, #333);
+}
+
+/* Toggle switch: on-state uses the app accent (blue), not custom green */
+.fnc-switch input:checked + .fnc-switch-track {
+	background: var(--primary, #3b82f6);
+}
+.fnc-switch-track {
+	background: var(--outline-strong, #c8ccd4);
+}
+
+/* Axis tabs */
+.fnc-axis-tab {
+	background: var(--surface-sunken, #eef);
+	color: var(--content-secondary, #374151);
+}
+
+/* Semantic panels keep meaning but theme-safe text */
+.fnc-pin-conflict,
+.fnc-pin-err {
+	color: var(--destructive, #b02a2a);
+}
