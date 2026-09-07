@@ -117,6 +117,37 @@ if (schema.$defs?.pinAny && schema.$defs.pin) {
 	schema.$defs.pinAny = { ...schema.$defs.pin, default: "NO_PIN" };
 }
 
+// motorBlock lists every driver (standard_stepper, tmc_2209, …) as sibling
+// optional properties, so rjsf renders ALL of them at once. Its oneOf only
+// carries `required:[driver]`. Restructure into a real oneOf: move each driver
+// into its own branch and keep only the shared fields as properties. rjsf then
+// renders shared fields + a driver-type picker + only the chosen driver's
+// fields.
+{
+	const motor = schema.$defs?.motorBlock as
+		| {
+				properties?: Record<string, unknown>;
+				oneOf?: { required?: string[] }[];
+		  }
+		| undefined;
+	if (motor?.oneOf && motor.properties) {
+		const driverKeys = motor.oneOf
+			.map((b) => b.required?.[0])
+			.filter((k): k is string => !!k);
+		const props = motor.properties;
+		const shared: Record<string, unknown> = {};
+		for (const [k, v] of Object.entries(props)) {
+			if (!driverKeys.includes(k)) shared[k] = v;
+		}
+		motor.properties = shared;
+		(motor as { oneOf: unknown[] }).oneOf = driverKeys.map((k) => ({
+			title: k,
+			required: [k],
+			properties: { [k]: props[k] },
+		}));
+	}
+}
+
 // oneOf/anyOf branches (e.g. the motor driver picker: standard_stepper,
 // tmc_2209, …) carry no title, so rjsf labels them "Option 1..N". Title each
 // branch by the property it selects, turning the selector into a real
