@@ -720,3 +720,10 @@
 	margin-left: 0.4rem;
 	background: #fff;
 }
+
+/* Motor section note */
+.fnc-motor-note {
+	color: var(--content-muted, #6b7280);
+	font-size: 0.82rem;
+	font-weight: 400;
+}

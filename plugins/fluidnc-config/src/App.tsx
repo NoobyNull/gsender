@@ -452,10 +452,6 @@ function AxesEditor({
 }) {
 	const [active, setAxis] = useState("x");
 
-	const axisSchema = {
-		...(schema.$defs?.axisLetter as object),
-		$defs: schema.$defs,
-	} as RJSFSchema;
 	const levelSchema = {
 		type: "object",
 		properties: pick(
@@ -468,6 +464,30 @@ function AxesEditor({
 
 	const levelData = pick(axes, AXIS_LEVEL_KEYS);
 	const axisData = (axes[active] ?? {}) as Record<string, unknown>;
+
+	// Split the axis schema: the axis's own settings (steps, rates, homing, …)
+	// separate from the motors, so motors render as their own sections. motor0
+	// is the primary (always shown, "Motor 1"); motor1 is an optional second
+	// motor on the axis (dual-drive), gated behind a toggle ("Motor 2").
+	const axisProps = (schema.$defs?.axisLetter as {
+		properties: Record<string, unknown>;
+	}).properties;
+	const axisMainSchema = {
+		type: "object",
+		properties: Object.fromEntries(
+			Object.entries(axisProps).filter(
+				([k]) => k !== "motor0" && k !== "motor1",
+			),
+		) as RJSFSchema["properties"],
+		$defs: schema.$defs,
+	} as RJSFSchema;
+	const motorSchema = {
+		...resolveRef(axisProps.motor0),
+		$defs: schema.$defs,
+	} as RJSFSchema;
+
+	const patchAxis = (patch: Record<string, unknown>) =>
+		setAxes({ ...axes, [active]: { ...axisData, ...patch } });
 
 	return (
 		<div>
@@ -516,19 +536,81 @@ function AxesEditor({
 			</div>
 
 			{active in axes ? (
-				<Form
-					{...formProps}
-					key={active}
-					schema={axisSchema}
-					formData={axisData}
-					formContext={{
-						...formProps.formContext,
-						pathPrefix: `axes.${active}`,
-					}}
-					onChange={(e) => setAxes({ ...axes, [active]: e.formData ?? {} })}
-				>
-					<span />
-				</Form>
+				<>
+					<Form
+						{...formProps}
+						key={`${active}-main`}
+						schema={axisMainSchema}
+						formData={axisData}
+						formContext={{
+							...formProps.formContext,
+							pathPrefix: `axes.${active}`,
+						}}
+						onChange={(e) => patchAxis(e.formData ?? {})}
+					>
+						<span />
+					</Form>
+
+					<div className="fnc-section open">
+						<div className="fnc-section-head">
+							<span className="fnc-section-title">Motor 1</span>
+							<span className="fnc-motor-note">(motor0 — primary)</span>
+						</div>
+						<div className="fnc-section-body">
+							<Form
+								{...formProps}
+								key={`${active}-m0`}
+								schema={motorSchema}
+								formData={(axisData.motor0 ?? {}) as Record<string, unknown>}
+								formContext={{
+									...formProps.formContext,
+									pathPrefix: `axes.${active}.motor0`,
+								}}
+								onChange={(e) => patchAxis({ motor0: e.formData ?? {} })}
+							>
+								<span />
+							</Form>
+						</div>
+					</div>
+
+					<div className={`fnc-section ${"motor1" in axisData ? "open" : ""}`}>
+						<div className="fnc-section-head">
+							<Toggle
+								on={"motor1" in axisData}
+								onChange={(on) => {
+									if (on) {
+										patchAxis({ motor1: axisData.motor1 ?? {} });
+									} else {
+										const n = { ...axisData };
+										delete n.motor1;
+										setAxes({ ...axes, [active]: n });
+									}
+								}}
+							/>
+							<span className="fnc-section-title">Motor 2</span>
+							<span className="fnc-motor-note">
+								(motor1 — second motor, e.g. dual-drive)
+							</span>
+						</div>
+						{"motor1" in axisData && (
+							<div className="fnc-section-body">
+								<Form
+									{...formProps}
+									key={`${active}-m1`}
+									schema={motorSchema}
+									formData={axisData.motor1 as Record<string, unknown>}
+									formContext={{
+										...formProps.formContext,
+										pathPrefix: `axes.${active}.motor1`,
+									}}
+									onChange={(e) => patchAxis({ motor1: e.formData ?? {} })}
+								>
+									<span />
+								</Form>
+							</div>
+						)}
+					</div>
+				</>
 			) : (
 				<p className="fnc-axis-off">
 					{active.toUpperCase()} axis is disabled. Enable it to configure.
