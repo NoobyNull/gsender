@@ -37,13 +37,18 @@ export default function PinAwareTextWidget(props: WidgetProps) {
 	const { schema, id, value, onChange, formContext } = props;
 
 	if (!isPinSchema(schema, id)) {
-		return <DefaultText {...props} />;
+		// Show the schema default as an example placeholder (e.g. "255").
+		const ph =
+			schema.default !== undefined ? String(schema.default) : props.placeholder;
+		return <DefaultText {...props} placeholder={ph} />;
 	}
 
 	const usedPins: Map<string, string[]> = formContext?.usedPins ?? new Map();
-	// Extra pins contributed by the current config (e.g. uart_channelN.M pins
-	// once a UART channel is configured). Merged with the static ESP32 pins.
-	const extraPins: PinDef[] = formContext?.extraPins ?? [];
+	const pathPrefix: string = formContext?.pathPrefix ?? "";
+	// uart_channelN.M pins are companion digital I/O — only valid in
+	// user_inputs/user_outputs. Offer the extra pins only there.
+	const allowExtra = /^user_(inputs|outputs)/.test(pathPrefix);
+	const extraPins: PinDef[] = allowExtra ? (formContext?.extraPins ?? []) : [];
 	const allPins = extraPins.length ? [...ESP32_PINS, ...extraPins] : ESP32_PINS;
 	const pinByName = new Map(allPins.map((p) => [p.pin, p]));
 	const selfPath = idToPath(id, formContext?.pathPrefix ?? "");

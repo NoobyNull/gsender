@@ -1,8 +1,14 @@
 // Code written by: Claude (Anthropic), via Claude Code.
 import { useEffect, useMemo, useState } from "react";
-import Form from "@rjsf/core";
+import Form, { getDefaultRegistry } from "@rjsf/core";
 import type { RJSFSchema, WidgetProps } from "@rjsf/utils";
-import validator from "@rjsf/validator-ajv8";
+import { customizeValidator } from "@rjsf/validator-ajv8";
+import Ajv2020 from "ajv/dist/2020";
+
+// The FluidNC schema is JSON Schema draft 2020-12; the default rjsf validator
+// uses draft-07 and errors with "no schema with key or ref draft/2020-12".
+// Use the 2020 Ajv class so validation actually runs.
+const validator = customizeValidator({ AjvClass: Ajv2020 });
 import yaml from "js-yaml";
 import schemaJson from "./vendor/fluidnc-config-schema.json";
 import PinAwareTextWidget from "./PinWidget";
@@ -73,7 +79,7 @@ function HelpTooltip(props: {
 				title="Help"
 				onClick={() => setOpen((o) => !o)}
 			>
-				ⓘ
+				?
 			</button>
 			{open && (
 				<div className="fnc-help-panel">
@@ -117,6 +123,16 @@ function Toggle({
 			{label && <span className="fnc-switch-label">{label}</span>}
 		</label>
 	);
+}
+
+// Number widget that shows the schema default as an example placeholder.
+const BaseNumberWidget = getDefaultRegistry().widgets.NumberWidget;
+function NumberWidgetWithExample(props: WidgetProps) {
+	const ph =
+		props.schema?.default !== undefined
+			? String(props.schema.default)
+			: props.placeholder;
+	return <BaseNumberWidget {...props} placeholder={ph} />;
 }
 
 // rjsf boolean widget: field name on the left, Apple toggle on the right —
@@ -963,6 +979,22 @@ function SectionEditor({
 	);
 	const objectKeys = group.keys.filter((k) => isObjectKey(k));
 
+	// A uart_channelN needs its physical uartN enabled (linked via uart_num).
+	// Prompt when a channel is turned on but its uart isn't configured.
+	const [uartPrompt, setUartPrompt] = useState<string | null>(null);
+	const enableUart = (n: string, scroll = false) => {
+		setConfig((prev) => ({ ...prev, [`uart${n}`]: prev[`uart${n}`] ?? {} }));
+		setUartPrompt(null);
+		if (scroll) {
+			setTimeout(() => {
+				const title = [...document.querySelectorAll(".fnc-section-title")].find(
+					(t) => t.textContent === `uart${n}`,
+				);
+				title?.scrollIntoView({ behavior: "smooth", block: "center" });
+			}, 100);
+		}
+	};
+
 	const scalarSchema = {
 		type: "object",
 		properties: Object.fromEntries(
@@ -997,14 +1029,18 @@ function SectionEditor({
 					key={k}
 					sectionKey={k}
 					present={k in config}
-					onToggle={(on) =>
+					onToggle={(on) => {
 						setConfig((prev) => {
 							if (on) return { ...prev, [k]: prev[k] ?? {} };
 							const next = { ...prev };
 							delete next[k];
 							return next;
-						})
-					}
+						});
+						const m = k.match(/^uart_channel(\d+)$/);
+						if (on && m && !(`uart${m[1]}` in config)) {
+							setUartPrompt(m[1]);
+						}
+					}}
 				>
 					<Form
 						{...formProps}
@@ -1019,6 +1055,44 @@ function SectionEditor({
 					</Form>
 				</CollapsibleSection>
 			))}
+
+			{uartPrompt && (
+				<div className="fnc-modal-overlay" onClick={() => setUartPrompt(null)}>
+					<div className="fnc-modal" onClick={(e) => e.stopPropagation()}>
+						<p>
+							<strong>UART{uartPrompt} isn't configured.</strong>
+						</p>
+						<p>
+							A UART channel needs its physical port (uart{uartPrompt}) enabled —
+							they're linked by the channel's <code>uart_num</code>. Enable it
+							now?
+						</p>
+						<div className="fnc-modal-btns">
+							<button
+								type="button"
+								className="fnc-btn fnc-primary"
+								onClick={() => enableUart(uartPrompt)}
+							>
+								Enable uart{uartPrompt}
+							</button>
+							<button
+								type="button"
+								className="fnc-btn"
+								onClick={() => enableUart(uartPrompt, true)}
+							>
+								Enable &amp; go to it
+							</button>
+							<button
+								type="button"
+								className="fnc-btn"
+								onClick={() => setUartPrompt(null)}
+							>
+								Not now
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }
@@ -1089,7 +1163,11 @@ export default function App() {
 
 	const commonFormProps: FormProps = {
 		validator,
-		widgets: { TextWidget: PinAwareTextWidget, CheckboxWidget: ToggleWidget },
+		widgets: {
+			TextWidget: PinAwareTextWidget,
+			NumberWidget: NumberWidgetWithExample,
+			CheckboxWidget: ToggleWidget,
+		},
 		templates: { DescriptionFieldTemplate: HelpTooltip },
 		formContext: { usedPins, extraPins },
 		idSeparator: "/",

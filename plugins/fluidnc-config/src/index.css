@@ -47,11 +47,13 @@
 }
 
 .fnc-error {
-	background: #ffe5e5;
-	border: 1px solid #d33;
+	background: var(--bg-danger, #ffe5e5);
+	color: var(--text-danger, #a3261f);
+	border: 1px solid var(--border-danger, #d33);
 	border-radius: 4px;
-	padding: 0.5rem;
+	padding: 0.5rem 0.75rem;
 	margin: 0.5rem 0;
+	font-size: 0.9rem;
 }
 
 .fnc-yaml {
@@ -799,4 +801,39 @@
 }
 .fnc-help-panel a:hover {
 	text-decoration: underline;
+}
+
+/* Modal (UART dependency prompt) */
+.fnc-modal-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.45);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 100;
+}
+.fnc-modal {
+	background: var(--surface-elevated, #fff);
+	color: var(--content-primary, #1a1a2e);
+	border: 1px solid var(--border, #ccd);
+	border-radius: 8px;
+	padding: 1.25rem 1.5rem;
+	max-width: 30rem;
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+.fnc-modal p {
+	margin: 0 0 0.6rem;
+	line-height: 1.5;
+}
+.fnc-modal code {
+	background: var(--surface-sunken, #eef);
+	padding: 0 0.25rem;
+	border-radius: 3px;
+}
+.fnc-modal-btns {
+	display: flex;
+	gap: 0.5rem;
+	flex-wrap: wrap;
+	margin-top: 0.75rem;
 }
