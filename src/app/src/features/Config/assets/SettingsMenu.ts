@@ -1,6 +1,7 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: <> */
 import { Confirm } from "app/components/ConfirmationDialog/ConfirmationDialogLib.ts";
 import {
+	FLUIDNC,
 	GRBL,
 	GRBLHAL,
 	IMPERIAL_UNITS,
@@ -199,7 +200,7 @@ export const SettingsMenu: SettingsMenuSection[] = [
 						key: "workspace.defaultFirmware",
 						description:
 							"The firmware gSender will resort to using if automatic detection fails.",
-						options: [GRBL, GRBLHAL],
+						options: [GRBL, GRBLHAL, FLUIDNC],
 					},
 					{
 						label: "Baud rate",

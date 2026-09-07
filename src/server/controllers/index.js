@@ -23,5 +23,6 @@
 
 import GrblController from "./Grbl/GrblController";
 import GrblHalController from "./Grblhal/GrblHalController";
+import FluidNCController from "./FluidNC/FluidNCController";
 
-export { GrblController, GrblHalController };
+export { GrblController, GrblHalController, FluidNCController };
