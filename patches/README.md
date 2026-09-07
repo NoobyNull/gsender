@@ -1,13 +1,14 @@
 # Upstream patches for Sienci-Labs/gsender
 
-Two self-contained patches against tag **`v1.7.0-Edge-1`**. Both apply cleanly
-to a pristine checkout of that tag (verified with `git apply --check`) and are
-independent — apply either or both.
+Self-contained patches against tag **`v1.7.0-Edge-1`**. Each applies cleanly to
+a pristine checkout of that tag (verified with `git apply --check`) and is
+independent — apply any subset.
 
 ```bash
 git checkout v1.7.0-Edge-1        # or your Edge base
 git apply patches/0001-fix-packaged-app-ui-404.patch
 git apply patches/0002-add-fluidnc-controller-support.patch
+git apply patches/0003-dont-force-maximize-window.patch
 ```
 
 (Use `patch -p1 < …` if you prefer; these are standard `git diff` output.)
@@ -44,6 +45,15 @@ over the existing Grbl controller:
   `controller.type` is intentionally overwritten to the Grbl-family tag by
   streaming state events (so the visualizer/jogging/rotary keep working).
 - Two jest suites cover detection-ordering and the error/alarm tables.
+
+## 0003 — Don't force-maximize the window on launch (bug fix, standalone)
+
+`WindowManager.openWindow` defaults `shouldMaximize=true` and calls
+`window.maximize()` on every launch, overriding the saved window bounds — the
+window always fills the screen, painful on large monitors. Pass
+`shouldMaximize=false` and give first-run a 1280×800 default; the existing
+close handler's saved bounds are then honored. Unrelated to FluidNC.
+Also pushed as branch `fix-window-maximize` for a standalone PR.
 
 ### Not included (fork-only)
 
