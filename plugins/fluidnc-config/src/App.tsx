@@ -117,36 +117,49 @@ if (schema.$defs?.pinAny && schema.$defs.pin) {
 	schema.$defs.pinAny = { ...schema.$defs.pin, default: "NO_PIN" };
 }
 
-// motorBlock lists every driver (standard_stepper, tmc_2209, …) as sibling
-// optional properties, so rjsf renders ALL of them at once. Its oneOf only
-// carries `required:[driver]`. Restructure into a real oneOf: move each driver
-// into its own branch and keep only the shared fields as properties. rjsf then
-// renders shared fields + a driver-type picker + only the chosen driver's
-// fields.
-{
-	const motor = schema.$defs?.motorBlock as
-		| {
-				properties?: Record<string, unknown>;
-				oneOf?: { required?: string[] }[];
-		  }
-		| undefined;
-	if (motor?.oneOf && motor.properties) {
-		const driverKeys = motor.oneOf
+// "Pick one of many sub-configs" sections (motor driver, kinematics, …) render
+// all their options at once. Restructure them into a real oneOf so rjsf shows a
+// type picker + only the chosen option's fields. Two shapes:
+//  - oneOf with `required:[key]` branches + shared props (motorBlock): move the
+//    choice keys into branches, keep shared fields.
+//  - maxProperties:1 with all-object properties (kinematicsSection): every
+//    property is an exclusive choice.
+const makeChoicePicker = (node: unknown): void => {
+	if (!node || typeof node !== "object") return;
+	const n = node as {
+		properties?: Record<string, unknown>;
+		oneOf?: { required?: string[] }[];
+		maxProperties?: number;
+	};
+	if (!n.properties) return;
+
+	if (Array.isArray(n.oneOf) && n.oneOf[0]?.required) {
+		const keys = n.oneOf
 			.map((b) => b.required?.[0])
 			.filter((k): k is string => !!k);
-		const props = motor.properties;
+		const props = n.properties;
 		const shared: Record<string, unknown> = {};
 		for (const [k, v] of Object.entries(props)) {
-			if (!driverKeys.includes(k)) shared[k] = v;
+			if (!keys.includes(k)) shared[k] = v;
 		}
-		motor.properties = shared;
-		(motor as { oneOf: unknown[] }).oneOf = driverKeys.map((k) => ({
+		n.properties = shared;
+		(n as { oneOf: unknown[] }).oneOf = keys.map((k) => ({
 			title: k,
 			required: [k],
 			properties: { [k]: props[k] },
 		}));
+	} else if (n.maxProperties === 1 && Object.keys(n.properties).length > 1) {
+		const props = n.properties;
+		(n as { oneOf: unknown[] }).oneOf = Object.keys(props).map((k) => ({
+			title: k,
+			required: [k],
+			properties: { [k]: props[k] },
+		}));
+		n.properties = {};
+		n.maxProperties = undefined;
 	}
-}
+};
+for (const def of Object.values(schema.$defs ?? {})) makeChoicePicker(def);
 
 // oneOf/anyOf branches (e.g. the motor driver picker: standard_stepper,
 // tmc_2209, …) carry no title, so rjsf labels them "Option 1..N". Title each
@@ -1320,6 +1333,60 @@ export default function App() {
 					</aside>
 				)}
 			</div>
+
+			<footer className="fnc-footer">
+				<a
+					href="http://wiki.fluidnc.com/en/config/overview"
+					target="_blank"
+					rel="noreferrer"
+				>
+					📖 FluidNC wiki
+				</a>
+				<span className="fnc-footer-sep">·</span>
+				<span className="fnc-footer-credits">
+					Built on{" "}
+					<a href="https://github.com/bdring/FluidNC" target="_blank" rel="noreferrer">
+						FluidNC
+					</a>
+					,{" "}
+					<a
+						href="https://github.com/bdring/fluidnc-config-files"
+						target="_blank"
+						rel="noreferrer"
+					>
+						config-files
+					</a>
+					,{" "}
+					<a
+						href="https://github.com/breiler/fluid-installer"
+						target="_blank"
+						rel="noreferrer"
+					>
+						fluid-installer
+					</a>
+					,{" "}
+					<a href="https://github.com/cncjs/cncjs" target="_blank" rel="noreferrer">
+						cncjs
+					</a>
+					,{" "}
+					<a
+						href="https://github.com/Sienci-Labs/gsender"
+						target="_blank"
+						rel="noreferrer"
+					>
+						gSender
+					</a>
+					. Plugin:{" "}
+					<a
+						href="https://github.com/NoobyNull/gsender"
+						target="_blank"
+						rel="noreferrer"
+					>
+						NoobyNull/gsender
+					</a>
+					.
+				</span>
+			</footer>
 		</div>
 	);
 }
