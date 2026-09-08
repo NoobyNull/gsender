@@ -35,6 +35,7 @@ export function FirmwareSelector({
 }: FirmwareSelectorProps) {
 	const grblActive = selectedFirmware === "Grbl";
 	const halActive = selectedFirmware === "grblHAL";
+	const fluidActive = selectedFirmware === "FluidNC";
 
 	return (
 		<div className="mt-4 p-2">
@@ -48,6 +49,11 @@ export function FirmwareSelector({
 					active={halActive}
 					label="grblHal"
 					onClick={() => onClick("grblHAL")}
+				/>
+				<FirmwareSelectButton
+					active={fluidActive}
+					label="FluidNC"
+					onClick={() => onClick("FluidNC")}
 				/>
 			</div>
 		</div>

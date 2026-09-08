@@ -175,6 +175,10 @@ export interface ControllerStateState {
 
 export interface ControllerState {
 	type: FIRMWARE_TYPES_T;
+	// The firmware actually detected at connect. `type` is the driver family we
+	// operate as (FluidNC runs as Grbl-compatible, so `type` streams back as
+	// "Grbl"); this preserves the real identity for display.
+	detectedFirmware: FIRMWARE_TYPES_T;
 	settings: ControllerSettings;
 	state: ControllerStateState;
 	modal: Modal;

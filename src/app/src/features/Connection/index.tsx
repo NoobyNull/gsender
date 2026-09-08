@@ -41,7 +41,7 @@ export interface ConnectionProps {
 	reportedFirmware: FirmwareFlavour;
 }
 
-export type FirmwareFlavour = "Grbl" | "grblHAL" | "";
+export type FirmwareFlavour = "Grbl" | "grblHAL" | "FluidNC" | "";
 
 function Connection(props: ConnectionProps) {
 	const connectionConfig = new WidgetConfig("connection");
@@ -370,11 +370,13 @@ export default connect((store) => {
 	const connection = get(store, "connection", {});
 	const ports: Port[] = get(connection, "ports", []);
 	const unrecognizedPorts: Port[] = get(connection, "unrecognizedPorts", []);
-	const reportedFirmware: FirmwareFlavour = get(
-		store,
-		"controller.type",
-		"Grbl",
-	);
+	// controller.type is overwritten to the base "Grbl" family tag by streaming
+	// controller:state events (FluidNC is driven as Grbl-compatible internally,
+	// on purpose). detectedFirmware preserves what we actually detected at
+	// connect, so use it for the badge and fall back to type.
+	const reportedFirmware: FirmwareFlavour =
+		get(store, "controller.detectedFirmware", "") ||
+		get(store, "controller.type", "Grbl");
 
 	return {
 		ports,
